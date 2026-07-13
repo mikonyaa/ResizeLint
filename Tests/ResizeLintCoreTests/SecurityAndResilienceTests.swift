@@ -14,7 +14,7 @@ func oversizedConfigurationIsRejectedBeforeRead() throws {
     let root = try resilienceTemporaryDirectory(named: "oversized-config")
     defer { try? FileManager.default.removeItem(at: root) }
     let configuration = root.appending(path: ".resizelint.yml")
-    FileManager.default.createFile(atPath: configuration.path, contents: nil)
+    _ = FileManager.default.createFile(atPath: configuration.path, contents: nil)
     let handle = try FileHandle(forWritingTo: configuration)
     try handle.truncate(atOffset: 1_048_577)
     try handle.close()
@@ -115,7 +115,7 @@ func oversizedSourceIsRejectedBeforeRead() async throws {
     let root = try resilienceTemporaryDirectory(named: "oversized-source")
     defer { try? FileManager.default.removeItem(at: root) }
     let source = root.appending(path: "Huge.swift")
-    FileManager.default.createFile(atPath: source.path, contents: nil)
+    _ = FileManager.default.createFile(atPath: source.path, contents: nil)
     let handle = try FileHandle(forWritingTo: source)
     try handle.truncate(atOffset: UInt64(ProjectScanner.maximumSourceBytes + 1))
     try handle.close()

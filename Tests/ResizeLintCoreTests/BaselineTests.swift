@@ -70,7 +70,7 @@ func oversizedBaselineIsRejectedBeforeRead() throws {
     let url = temporaryFile(named: "oversized.json")
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
     try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-    FileManager.default.createFile(atPath: url.path, contents: nil)
+    _ = FileManager.default.createFile(atPath: url.path, contents: nil)
     let handle = try FileHandle(forWritingTo: url)
     try handle.truncate(atOffset: 10 * 1_048_576 + 1)
     try handle.close()

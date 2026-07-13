@@ -1,6 +1,11 @@
 import Foundation
 import SwiftParser
 import SwiftParserDiagnostics
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#endif
 
 public enum FixError: Error, Equatable {
     case overlappingEdits
@@ -60,7 +65,23 @@ public enum FixEngine {
         defer { try? FileManager.default.removeItem(at: temporary) }
         try Data(updated.utf8).write(to: temporary, options: .withoutOverwriting)
         if let permissions { try FileManager.default.setAttributes([.posixPermissions: permissions], ofItemAtPath: temporary.path) }
-        _ = try FileManager.default.replaceItemAt(url, withItemAt: temporary)
+        try replaceItem(at: url, withItemAt: temporary)
+    }
+
+    private static func replaceItem(at destination: URL, withItemAt replacement: URL) throws {
+        let result = replacement.path.withCString { replacementPath in
+            destination.path.withCString { destinationPath in
+                rename(replacementPath, destinationPath)
+            }
+        }
+        guard result == 0 else {
+            let code = errno
+            throw NSError(
+                domain: NSPOSIXErrorDomain,
+                code: Int(code),
+                userInfo: [NSFilePathErrorKey: destination.path]
+            )
+        }
     }
 
     private static func unifiedDiff(old: String, new: String, path: String) -> String {
