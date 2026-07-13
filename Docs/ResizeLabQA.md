@@ -14,7 +14,7 @@ device was selected or used.
 
 Xcode 27 was not installed on the review machine. Its Device Hub interactive
 resize mode is therefore not claimed as verified. Exact-size render tests and
-explicit simulator orientations provide the local Gate A coverage instead.
+explicit simulator orientations provide the local resize coverage instead.
 
 ## Automated results
 

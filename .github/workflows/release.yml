@@ -1,0 +1,204 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing release tag and semantic version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    name: Linux release artifact
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Validate release ref
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$GITHUB_REF" = "refs/tags/$VERSION"
+
+      - name: Build Linux x86_64 archive
+        env:
+          VERSION: ${{ inputs.version }}
+        run: Scripts/release/build-linux.sh "$RUNNER_TEMP/linux" "$VERSION"
+
+      - name: Upload Linux archive
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: linux-release
+          path: ${{ runner.temp }}/linux/ResizeLint-${{ inputs.version }}-linux-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 1
+
+  draft:
+    name: Signed and notarized draft
+    needs: linux
+    runs-on: macos-26
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Install Swift 6.3.3
+        uses: swift-actions/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9
+        with:
+          swift-version: "6.3.3"
+
+      - name: Validate release ref
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$GITHUB_REF" = "refs/tags/$VERSION"
+
+      - name: Import Developer ID identities
+        env:
+          APPLICATION_P12: ${{ secrets.RESIZELINT_APPLICATION_CERTIFICATE_P12 }}
+          APPLICATION_PASSWORD: ${{ secrets.RESIZELINT_APPLICATION_CERTIFICATE_PASSWORD }}
+          INSTALLER_P12: ${{ secrets.RESIZELINT_INSTALLER_CERTIFICATE_P12 }}
+          INSTALLER_PASSWORD: ${{ secrets.RESIZELINT_INSTALLER_CERTIFICATE_PASSWORD }}
+          TEAM_ID: ${{ secrets.RESIZELINT_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          for value in APPLICATION_P12 APPLICATION_PASSWORD INSTALLER_P12 INSTALLER_PASSWORD TEAM_ID; do
+            test -n "${!value}"
+          done
+          test "$TEAM_ID" = "9K594G5QQ8"
+
+          keychain="$RUNNER_TEMP/resizelint-signing.keychain-db"
+          keychain_password=$(uuidgen)
+          application_p12="$RUNNER_TEMP/application.p12"
+          installer_p12="$RUNNER_TEMP/installer.p12"
+          printf '%s' "$APPLICATION_P12" | base64 --decode > "$application_p12"
+          printf '%s' "$INSTALLER_P12" | base64 --decode > "$installer_p12"
+
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$application_p12" -k "$keychain" -P "$APPLICATION_PASSWORD" -T /usr/bin/codesign
+          security import "$installer_p12" -k "$keychain" -P "$INSTALLER_PASSWORD" -T /usr/bin/productbuild -T /usr/bin/pkgbuild
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+
+          application_identity=$(security find-identity -v -p codesigning "$keychain" \
+            | awk -v team="$TEAM_ID" 'index($0, "Developer ID Application:") && index($0, "(" team ")") { print $2; exit }')
+          security find-certificate -a -c "Developer ID Installer" -p "$keychain" \
+            | openssl x509 -inform pem -noout -subject \
+            | grep -q "$TEAM_ID"
+          installer_identity=$(security find-certificate -a -c "Developer ID Installer" -Z "$keychain" \
+            | awk '/SHA-1 hash:/ { print $3; exit }')
+          test -n "$application_identity"
+          test -n "$installer_identity"
+
+          echo "::add-mask::$application_identity"
+          echo "::add-mask::$installer_identity"
+          {
+            echo "RESIZELINT_APPLICATION_IDENTITY=$application_identity"
+            echo "RESIZELINT_INSTALLER_IDENTITY=$installer_identity"
+            echo "RESIZELINT_SIGNING_KEYCHAIN=$keychain"
+          } >> "$GITHUB_ENV"
+          rm -f "$application_p12" "$installer_p12"
+
+      - name: Build and sign universal macOS artifacts
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          Scripts/release/build-macos.sh "$RUNNER_TEMP/macos-builds"
+          Scripts/release/assemble-macos.sh \
+            "$RUNNER_TEMP/macos-builds" \
+            "$RUNNER_TEMP/release" \
+            "$VERSION" \
+            --sign
+
+      - name: Notarize and verify macOS artifacts
+        env:
+          VERSION: ${{ inputs.version }}
+          NOTARY_KEY_P8: ${{ secrets.RESIZELINT_NOTARY_KEY_P8 }}
+          NOTARY_KEY_ID: ${{ secrets.RESIZELINT_NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.RESIZELINT_NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          for value in NOTARY_KEY_P8 NOTARY_KEY_ID NOTARY_ISSUER_ID; do
+            test -n "${!value}"
+          done
+          key="$RUNNER_TEMP/AuthKey_$NOTARY_KEY_ID.p8"
+          printf '%s' "$NOTARY_KEY_P8" | base64 --decode > "$key"
+          chmod 0600 "$key"
+
+          zip="$RUNNER_TEMP/release/ResizeLint-$VERSION-macos-universal.zip"
+          pkg="$RUNNER_TEMP/release/ResizeLint-$VERSION-macos-universal.pkg"
+          xcrun notarytool submit "$zip" --key "$key" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
+          xcrun notarytool submit "$pkg" --key "$key" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
+          rm -f "$key"
+
+          xcrun stapler staple "$pkg"
+          xcrun stapler validate "$pkg"
+          pkgutil --check-signature "$pkg"
+          spctl --assess --type install --verbose=4 "$pkg"
+
+          mkdir -p "$RUNNER_TEMP/zip-check"
+          ditto -x -k "$zip" "$RUNNER_TEMP/zip-check"
+          codesign --verify --strict --verbose=2 "$RUNNER_TEMP/zip-check/resizelint"
+          codesign -vvvv -R="notarized" --check-notarization "$RUNNER_TEMP/zip-check/resizelint"
+
+      - name: Download Linux archive
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: linux-release
+          path: ${{ runner.temp }}/release
+
+      - name: Build source archive and checksums
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          Scripts/release/build-source-archive.sh "$RUNNER_TEMP/release" "$VERSION"
+          Scripts/release/checksums.sh "$RUNNER_TEMP/release"
+          cd "$RUNNER_TEMP/release"
+          shasum -a 256 -c SHA256SUMS
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          gh release create "$VERSION" \
+            "$RUNNER_TEMP/release/ResizeLint-$VERSION-macos-universal.zip" \
+            "$RUNNER_TEMP/release/ResizeLint-$VERSION-macos-universal.pkg" \
+            "$RUNNER_TEMP/release/ResizeLint-$VERSION-linux-x86_64.tar.gz" \
+            "$RUNNER_TEMP/release/ResizeLint-$VERSION-source.tar.gz" \
+            "$RUNNER_TEMP/release/SHA256SUMS" \
+            --draft \
+            --generate-notes \
+            --title "ResizeLint $VERSION" \
+            --verify-tag
+
+      - name: Remove signing keychain
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP"/*.p12 "$RUNNER_TEMP"/AuthKey_*.p8
+          if [[ -n "${RESIZELINT_SIGNING_KEYCHAIN:-}" ]]; then
+            security delete-keychain "$RESIZELINT_SIGNING_KEYCHAIN" || true
+          fi
