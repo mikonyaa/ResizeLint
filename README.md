@@ -141,6 +141,10 @@ open ResizeLab.xcodeproj
 
 Run ResizeLab only in an iOS Simulator. Exercise compact, square, and wide windows, Dynamic Type, light and dark appearance, Reduce Motion, and Reduce Transparency.
 
+![ResizeLab adaptive gallery using container-driven sizing](Assets/resizelab-adaptive.png)
+
+See the [simulator QA evidence](Docs/ResizeLabQA.md) and the short [portrait-to-landscape resizing demonstration](Assets/resizelab-demo.mp4).
+
 ## Limitations
 
 - Storyboard and XIB geometry are not analyzed.
