@@ -1,0 +1,12 @@
+* text=auto
+*.swift text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+*.rb text eol=lf
+*.png binary
+
+.github export-ignore
+Tests export-ignore

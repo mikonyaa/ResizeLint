@@ -1,0 +1,33 @@
+name: Rule proposal
+description: Propose a precise, deterministic resizing diagnostic.
+title: "Rule proposal: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: unsafe
+    attributes:
+      label: Problematic source pattern
+      render: swift
+    validations:
+      required: true
+  - type: textarea
+    id: adaptive
+    attributes:
+      label: Adaptive alternative
+      render: swift
+    validations:
+      required: true
+  - type: textarea
+    id: precision
+    attributes:
+      label: Precision boundaries
+      description: List legitimate cases that the rule must not report.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reference or production evidence
+    validations:
+      required: true

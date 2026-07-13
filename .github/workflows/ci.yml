@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: ${{ fromJSON(github.event_name == 'pull_request' && '["macos-26","ubuntu-22.04"]' || '["macos-26","ubuntu-22.04","macos-26-intel","ubuntu-latest"]') }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Install Swift 6.3.3
+        uses: swift-actions/setup-swift@364295d9c23900ce04d4e5cc708387921b4e50f9
+        with:
+          swift-version: "6.3.3"
+
+      - name: Resolve dependencies
+        run: swift package resolve
+
+      - name: Build debug
+        run: swift build
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build release
+        run: swift build -c release
+
+      - name: Verify SwiftLint
+        if: startsWith(matrix.runner, 'macos')
+        run: |
+          command -v swiftlint >/dev/null || brew install swiftlint
+          test "$(swiftlint version)" = "0.65.0"
+          swiftlint --strict
+
+      - name: Test composite Action consumer
+        run: Scripts/ci/test-action-consumer.sh .build/release/resizelint
+
+      - name: Check documentation links
+        run: Scripts/ci/check-doc-links.sh
+
+      - name: Check publication hygiene
+        run: Scripts/ci/public-artifact-scan.sh
+
+      - name: Run benchmark smoke test
+        if: matrix.runner == 'macos-26' && github.event_name != 'pull_request'
+        run: Scripts/benchmark/run.sh .build/release/resizelint 10000 5
+
+      - name: Generate coverage data
+        if: matrix.runner == 'macos-26' && github.event_name != 'pull_request'
+        run: swift test --enable-code-coverage
+
+      - name: Verify clean-room package
+        if: matrix.runner == 'macos-26' && github.event_name != 'pull_request'
+        run: Scripts/ci/clean-room.sh

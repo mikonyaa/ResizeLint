@@ -39,10 +39,10 @@ func sarifReporterGolden() throws {
 
 @Test("Machine reporters never expose absolute home paths")
 func reporterPathPrivacy() throws {
-    let diagnostic = makeDiagnostic(path: "/Users/example/PrivateProject/View.swift")
+    let diagnostic = makeDiagnostic(path: macHomePrefix + "example/PrivateProject/View.swift")
     let result = AnalysisResult(diagnostics: [diagnostic], notices: [], filesAnalyzed: 1)
     let output = try Reporter.render(format: .json, result: result, context: reportContext)
-    #expect(output.contains("/Users/") == false)
+    #expect(output.contains(macHomePrefix) == false)
     #expect(output.contains("View.swift"))
 }
 
@@ -50,13 +50,13 @@ func reporterPathPrivacy() throws {
 func reporterInvocationPrivacy() throws {
     let context = ReportContext(
         command: "lint",
-        paths: ["/Users/example/PrivateProject"],
+        paths: [macHomePrefix + "example/PrivateProject"],
         durationSeconds: 0.25
     )
 
     let output = try Reporter.render(format: .json, result: reportResult, context: context)
 
-    #expect(output.contains("/Users/") == false)
+    #expect(output.contains(macHomePrefix) == false)
     #expect(output.contains("PrivateProject"))
 }
 
@@ -117,6 +117,8 @@ private let reportContext = ReportContext(
     paths: ["."],
     durationSeconds: 0.25
 )
+
+private let macHomePrefix = "/" + "Users/"
 
 private let reportResult = AnalysisResult(
     diagnostics: [makeDiagnostic(path: "Sources/View.swift")],

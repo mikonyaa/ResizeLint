@@ -1,0 +1,34 @@
+name: False positive
+description: Report a diagnostic that is not actionable in its context.
+title: "False positive: "
+labels:
+  - false-positive
+body:
+  - type: input
+    id: version
+    attributes:
+      label: ResizeLint version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: rule
+    attributes:
+      label: Rule ID
+      placeholder: RL006
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Minimized source
+      description: Remove product names, private paths, and proprietary code.
+      render: swift
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Why the finding is not actionable
+    validations:
+      required: true

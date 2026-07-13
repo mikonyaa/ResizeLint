@@ -1,0 +1,43 @@
+name: ResizeLint
+description: Find Swift layout assumptions that break in resizable windows.
+author: mikonyaa
+
+inputs:
+  path:
+    description: File or directory to analyze, relative to the workspace.
+    required: false
+    default: .
+  config:
+    description: Optional path to a ResizeLint configuration file.
+    required: false
+    default: ""
+  fail-on:
+    description: Minimum severity that fails the step (error, warning, or info).
+    required: false
+    default: error
+  version:
+    description: Exact ResizeLint release version to download.
+    required: false
+    default: 1.0.0
+
+outputs:
+  sarif:
+    description: Absolute path to the generated SARIF 2.1.0 report.
+    value: ${{ steps.lint.outputs.sarif }}
+
+runs:
+  using: composite
+  steps:
+    - id: lint
+      name: Run ResizeLint
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_FAIL_ON: ${{ inputs.fail-on }}
+        INPUT_VERSION: ${{ inputs.version }}
+      run: "$GITHUB_ACTION_PATH/Scripts/action/run.sh"
+
+branding:
+  icon: maximize
+  color: blue
