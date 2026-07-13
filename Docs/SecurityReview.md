@@ -13,9 +13,11 @@ not depend on analyzed projects being trusted.
 - Swift 6.3.2
 - Xcode 26.5
 - Release binary built with `swift build -c release`
+- Ubuntu Jammy x86_64 container with Swift 6.3.3
 
-The release target remains Swift 6.3.3. A final compatibility run with that
-exact toolchain is required before publication.
+The exact release toolchain was verified with the official
+`swift:6.3.3-jammy` image at digest
+`sha256:c4d35325fd0640f5ed3737180e1f00094a8da78689b8d94c60f9e5ea40e5c132`.
 
 ## Defensive controls verified
 
@@ -59,6 +61,10 @@ The review found and fixed the following defects:
 8. Unknown rule IDs in configuration and suppression directives were accepted.
 9. Malformed and oversized baseline documents were not mapped to bounded,
    domain-specific errors.
+10. Foundation's file-replacement behavior could remove the destination on
+    Linux. Fix writes now use same-directory POSIX `rename`, with macOS and
+    Linux regression coverage for replacement, rollback, permissions, line
+    endings, symlinks, and non-regular destinations.
 
 No known high- or critical-severity security or data-loss issue remains in the
 reviewed scope.
@@ -72,10 +78,10 @@ packages:
 - Swift Argument Parser 1.8.2 (`6a52f3251125d74daf04fcbd5e6f08a75d074382`)
 - Yams 6.2.2 (`a27b21e0c81c5bf42049b897a62aaf387e80f279`)
 
-All 71 Swift ecosystem entries returned by the GitHub Advisory Database on the
-review date were checked. None named any of these three packages. The installed
+All 61 Swift ecosystem entries returned by the GitHub Advisory Database in the
+final review query were checked. None named any of these three packages. The installed
 SwiftPM does not provide a native `swift package audit` command, so the database
-query and exact resolved graph are the audit evidence for this gate.
+query and exact resolved graph are the audit evidence for this review.
 
 ## Performance and determinism
 
@@ -96,6 +102,8 @@ A generated fixture contained exactly 250,000 Swift lines across 250 files
 All three SARIF reports had SHA-256
 `ddb1dde18b301c310fee9c74b89bf230cd050f7e764e1d5805af6ac04391a274`.
 This is below the 10-second and 1-GB release thresholds on the review machine.
+A final run after the Linux atomic-write remediation completed in at most
+3.77 seconds with the same SARIF digest.
 
 The fixture and threshold check are reproducible with:
 
@@ -108,6 +116,10 @@ Scripts/benchmark/run.sh .build/release/resizelint 250000 10
 
 - Cancellation cannot interrupt a synchronous SwiftParser call already in
   progress; it prevents later batches and suppresses a cancelled result.
-- Exact Swift 6.3.3, Xcode 27, Linux, signing, and installer verification are
-  tracked separately as release-readiness checks.
+- Xcode 27 was not available; Xcode 26.5 simulator evidence is documented
+  separately.
+- Developer ID Application and Installer identities were not installed.
+  Signed-artifact, notarization, stapling, and Gatekeeper acceptance checks
+  therefore remain release blockers. Unsigned ZIP and package structure were
+  verified without contacting Apple's notarization service.
 - Advisory databases change over time and must be queried again for a release.

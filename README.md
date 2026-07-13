@@ -160,7 +160,7 @@ Candidates for 1.1 include richer Xcode target mapping, `resizelint explain RL00
 
 ## Contributing, security, and license
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing a rule. False-positive changes need a minimized regression fixture and corpus evidence. Report sensitive problems through the process in [SECURITY.md](SECURITY.md). Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Maintainers can follow the [release preparation guide](Docs/ReleasePreparation.md) for protected signing and notarization readiness.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing a rule. False-positive changes need a minimized regression fixture and corpus evidence. Report sensitive problems through the process in [SECURITY.md](SECURITY.md). Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Maintainers can review the [local release-candidate evidence](Docs/Verification.md) and follow the [release preparation guide](Docs/ReleasePreparation.md) for protected signing and notarization readiness.
 
 ResizeLint is available under the [MIT License](LICENSE).
 
