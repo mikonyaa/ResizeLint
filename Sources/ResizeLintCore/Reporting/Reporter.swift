@@ -77,8 +77,7 @@ public enum Reporter {
             ),
             summary: summary(for: active, filesAnalyzed: result.filesAnalyzed),
             diagnostics: active,
-            fixes: active.compactMap(\.fix),
-            timing: Timing(durationSeconds: context.durationSeconds)
+            fixes: active.compactMap(\.fix)
         )
         return try encode(report)
     }
@@ -196,11 +195,9 @@ private struct JSONReport: Encodable {
     let summary: ReportSummary
     let diagnostics: [Diagnostic]
     let fixes: [SourceEdit]
-    let timing: Timing
 }
 
 private struct Invocation: Encodable { let command: String; let paths: [String] }
-private struct Timing: Encodable { let durationSeconds: Double }
 private struct ReportSummary: Encodable {
     let errors: Int
     let warnings: Int

@@ -4,7 +4,7 @@
   "title": "ResizeLint JSON report v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "toolVersion", "invocation", "summary", "diagnostics", "fixes", "timing"],
+  "required": ["schemaVersion", "toolVersion", "invocation", "summary", "diagnostics", "fixes"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "toolVersion": { "type": "string" },
@@ -29,13 +29,7 @@
       }
     },
     "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
-    "fixes": { "type": "array", "items": { "$ref": "#/$defs/fix" } },
-    "timing": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["durationSeconds"],
-      "properties": { "durationSeconds": { "type": "number", "minimum": 0 } }
-    }
+    "fixes": { "type": "array", "items": { "$ref": "#/$defs/fix" } }
   },
   "$defs": {
     "location": {

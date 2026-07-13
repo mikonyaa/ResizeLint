@@ -79,6 +79,11 @@ query and exact resolved graph are the audit evidence for this gate.
 
 ## Performance and determinism
 
+Machine-readable JSON and SARIF output is byte-for-byte deterministic for the
+same source tree and invocation. Wall-clock duration is shown only in the human
+report and recorded separately by benchmark tooling, so runtime variance cannot
+change a machine report.
+
 A generated fixture contained exactly 250,000 Swift lines across 250 files
 (8,638,890 bytes). Three release-mode runs with eight jobs produced:
 

@@ -56,7 +56,7 @@ ResizeLint does not rewrite app architecture and does not upload source. It can 
 - **RL008 · error · legacy-app-lifecycle** — reports a proven app-level absence of scene lifecycle.
 - **RL009 · info · fullscreen-requirement-review** — requests a deliberate review of full-screen requirements.
 
-See [the complete rule documentation](Docs/Rules/README.md) for detection boundaries and adaptive examples.
+See [the complete rule documentation](Docs/Rules/README.md) for detection boundaries and adaptive examples. The release candidate reached 100% error and warning precision on the documented [external validation corpus](Docs/ExternalCorpus.md).
 
 ## GitHub Action
 

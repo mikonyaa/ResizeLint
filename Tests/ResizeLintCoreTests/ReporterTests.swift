@@ -31,6 +31,22 @@ func jsonReporterGolden() throws {
     try expectJSON(output, equalsGolden: "report.json")
 }
 
+@Test("JSON reporter is byte-for-byte deterministic across run durations")
+func jsonReporterDeterminism() throws {
+    let first = try Reporter.render(
+        format: .json,
+        result: reportResult,
+        context: ReportContext(command: "lint", paths: ["."], durationSeconds: 0.01)
+    )
+    let second = try Reporter.render(
+        format: .json,
+        result: reportResult,
+        context: ReportContext(command: "lint", paths: ["."], durationSeconds: 9.99)
+    )
+
+    #expect(first == second)
+}
+
 @Test("SARIF reporter matches the complete 2.1.0 golden contract")
 func sarifReporterGolden() throws {
     let output = try Reporter.render(format: .sarif, result: reportResult, context: reportContext)

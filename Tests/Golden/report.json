@@ -22,6 +22,5 @@
   "invocation": { "command": "lint", "paths": ["."] },
   "schemaVersion": 1,
   "summary": { "errors": 0, "filesAnalyzed": 1, "info": 0, "warnings": 1 },
-  "timing": { "durationSeconds": 0.25 },
   "toolVersion": "1.0.0"
 }
