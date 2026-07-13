@@ -1,0 +1,12 @@
+{
+  "ruleID": "RL008",
+  "name": "legacy-app-lifecycle",
+  "positive": "@UIApplicationMain final class AppDelegate: UIResponder, UIApplicationDelegate { var window: UIWindow? }",
+  "adaptiveNegative": "@main struct SampleApp: App { var body: some Scene { WindowGroup { ContentView() } } }",
+  "commentsAndStrings": "// var window: UIWindow?\nlet text = \"UIApplicationDelegate.window\"",
+  "multiline": "final class AppDelegate:\n    UIResponder,\n    UIApplicationDelegate {\n    var window: UIWindow?\n}",
+  "conditional": "#if LEGACY_APP\nfinal class AppDelegate: UIResponder, UIApplicationDelegate { var window: UIWindow? }\n#endif",
+  "suppression": "// resizelint:disable-file RL008 -- Legacy lifecycle is required by the embedded test host.\nfinal class AppDelegate: UIResponder, UIApplicationDelegate { var window: UIWindow? }",
+  "projectFiles": { "Info.plist": "<plist><dict></dict></plist>", "project.pbxproj": "PRODUCT_TYPE = com.apple.product-type.application;" },
+  "expected": { "severity": "error", "messageContains": "scene lifecycle", "count": 1 }
+}

@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL009",
+  "name": "fullscreen-requirement-review",
+  "positive": "UIRequiresFullScreen = true",
+  "adaptiveNegative": "UIRequiresFullScreen = false",
+  "commentsAndStrings": "// UIRequiresFullScreen = true\nlet text = \"INFOPLIST_KEY_UIRequiresFullScreen = YES\"",
+  "multiline": "<key>UIRequiresFullScreen</key>\n<true/>",
+  "conditional": "INFOPLIST_KEY_UIRequiresFullScreen[sdk=iphoneos*] = YES;",
+  "suppression": "# ResizeLint configuration override disables RL009 for the game target.",
+  "expected": { "severity": "info", "messageContains": "discrete resizing", "count": 1 }
+}

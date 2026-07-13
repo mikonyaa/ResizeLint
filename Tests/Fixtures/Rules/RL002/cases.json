@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL002",
+  "name": "main-screen-scale",
+  "positive": "let scale = UIScreen.main.nativeScale",
+  "adaptiveNegative": "let scale = traitCollection.displayScale",
+  "commentsAndStrings": "/* UIScreen.main.scale */\nlet text = \"UIScreen.main.nativeScale\"",
+  "multiline": "let scale = UIScreen\n    .main\n    .scale",
+  "conditional": "#if canImport(UIKit)\nlet scale = UIScreen.main.scale\n#endif",
+  "suppression": "// resizelint:disable-next-line RL002 -- Renderer requires native pixels.\nlet scale = UIScreen.main.nativeScale",
+  "expected": { "severity": "warning", "messageContains": "displayScale", "count": 1 }
+}

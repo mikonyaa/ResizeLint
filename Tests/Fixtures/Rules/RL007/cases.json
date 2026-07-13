@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL007",
+  "name": "orientation-layout-decision",
+  "positive": "let columns = interfaceOrientation.isLandscape ? 4 : 2",
+  "adaptiveNegative": "let columns = view.bounds.width > view.bounds.height ? 4 : 2",
+  "commentsAndStrings": "// interfaceOrientation.isPortrait\nlet text = \"statusBarOrientation\"",
+  "multiline": "if windowScene\n    .interfaceOrientation\n    .isPortrait {\n    width = 320\n}",
+  "conditional": "#if os(iOS)\nlet sidebar = interfaceOrientation.isLandscape\n#endif",
+  "suppression": "// resizelint:disable-next-line RL007 -- Camera coordinates require device orientation.\nlet rotation = UIDevice.current.orientation.isLandscape ? 90 : 0",
+  "expected": { "severity": "warning", "messageContains": "view bounds", "count": 1 }
+}

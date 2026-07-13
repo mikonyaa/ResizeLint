@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL001",
+  "name": "main-screen-bounds",
+  "positive": "let size = UIScreen.main.bounds.size",
+  "adaptiveNegative": "let size = view.bounds.size",
+  "commentsAndStrings": "// UIScreen.main.bounds\nlet text = \"UIScreen.main.bounds\"",
+  "multiline": "let bounds = UIScreen\n    .main\n    .coordinateSpace\n    .bounds",
+  "conditional": "#if canImport(UIKit)\nlet bounds = UIScreen.main.nativeBounds\n#endif",
+  "suppression": "// resizelint:disable-next-line RL001 -- Snapshot intentionally uses screen coordinates.\nlet bounds = UIScreen.main.bounds",
+  "expected": { "severity": "error", "messageContains": "current scene", "count": 1 }
+}

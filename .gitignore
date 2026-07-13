@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+DerivedData/
+.DS_Store
+*.xcuserstate
+xcuserdata/
+Examples/ResizeLab/ResizeLab.xcodeproj/
+Artifacts/
+.security/

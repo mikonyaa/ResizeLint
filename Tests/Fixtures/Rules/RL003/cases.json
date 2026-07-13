@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL003",
+  "name": "main-screen-reference",
+  "positive": "let screen = UIScreen.main",
+  "adaptiveNegative": "let screen = view.window?.windowScene?.screen",
+  "commentsAndStrings": "// UIScreen.main\nlet text = #\"UIScreen.main\"#",
+  "multiline": "let screen = UIScreen\n    .main",
+  "conditional": "#if os(iOS)\nlet screen = UIScreen.main\n#endif",
+  "suppression": "// resizelint:disable-next-line RL003 -- Diagnostic utility reports the primary display.\nlet screen = UIScreen.main",
+  "expected": { "severity": "warning", "messageContains": "scene-local", "count": 1 }
+}

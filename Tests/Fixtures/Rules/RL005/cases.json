@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL005",
+  "name": "global-status-bar-geometry",
+  "positive": "let height = UIApplication.shared.statusBarFrame.height",
+  "adaptiveNegative": "let manager = windowScene.statusBarManager",
+  "commentsAndStrings": "// UIApplication.shared.statusBarOrientation\nlet text = \"UIApplication.shared.statusBarFrame\"",
+  "multiline": "let frame = UIApplication\n    .shared\n    .statusBarFrame",
+  "conditional": "#if os(iOS)\nlet orientation = UIApplication.shared.statusBarOrientation\n#endif",
+  "suppression": "// resizelint:disable-next-line RL005 -- Compatibility probe does not drive layout.\nlet frame = UIApplication.shared.statusBarFrame",
+  "expected": { "severity": "error", "messageContains": "safe area", "count": 1 }
+}

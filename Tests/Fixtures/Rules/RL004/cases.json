@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL004",
+  "name": "global-window-access",
+  "positive": "let window = UIApplication.shared.connectedScenes.first as? UIWindowScene",
+  "adaptiveNegative": "let window = view.window",
+  "commentsAndStrings": "// UIApplication.shared.windows\nlet text = \"UIApplication.shared.keyWindow\"",
+  "multiline": "let window = UIApplication\n    .shared\n    .connectedScenes\n    .first",
+  "conditional": "#if canImport(UIKit)\nlet window = UIApplication.shared.windows.first\n#endif",
+  "suppression": "// resizelint:disable-next-line RL004 -- Test harness controls the only scene.\nlet window = UIApplication.shared.keyWindow",
+  "expected": { "severity": "error", "messageContains": "scene-specific", "count": 1 }
+}

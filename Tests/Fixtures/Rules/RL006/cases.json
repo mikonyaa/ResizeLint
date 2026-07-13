@@ -1,0 +1,11 @@
+{
+  "ruleID": "RL006",
+  "name": "idiom-layout-decision",
+  "positive": "let columns = traitCollection.userInterfaceIdiom == .pad ? 4 : 2",
+  "adaptiveNegative": "let columns = containerWidth > 700 ? 4 : 2",
+  "commentsAndStrings": "// userInterfaceIdiom == .pad\nlet text = \"UIDevice.current.userInterfaceIdiom == .phone\"",
+  "multiline": "if UIDevice.current\n    .userInterfaceIdiom == .phone {\n    width = 320\n}",
+  "conditional": "#if os(iOS)\nlet sidebar = traitCollection.userInterfaceIdiom == .pad\n#endif",
+  "suppression": "// resizelint:disable-next-line RL006 -- Layout is intentionally hardware-specific.\nlet columns = UIDevice.current.userInterfaceIdiom == .pad ? 4 : 2",
+  "expected": { "severity": "warning", "messageContains": "container size", "count": 1 }
+}
