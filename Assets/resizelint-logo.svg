@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="300" viewBox="0 0 960 300" role="img" aria-labelledby="title description">
+  <title id="title">ResizeLint</title>
+  <desc id="description">ResizeLint wordmark beside a continuous adaptive R-shaped mark.</desc>
+  <defs>
+    <linearGradient id="background" x1="80" y1="24" x2="890" y2="286" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#07101F"/>
+      <stop offset="1" stop-color="#030711"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0" cy="0" r="1" gradientTransform="translate(238 132) rotate(18) scale(320 250)" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18315E" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#18315E" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="960" height="300" rx="34" fill="url(#background)"/>
+  <rect width="960" height="300" rx="34" fill="url(#halo)"/>
+  <g transform="translate(159 54)" fill="none" stroke="#F6F1E6" stroke-linecap="round" stroke-linejoin="round" stroke-width="17">
+    <path d="M49 157V69c0-25 18-41 44-41h37c30 0 50 18 50 45 0 25-19 43-45 43h-17l55 49"/>
+    <path d="M50 104l55 57H65c-20 0-33-13-33-33v-16c0-9 7-16 16-16"/>
+  </g>
+  <text x="371" y="191" fill="#F6F1E6" font-family="Avenir Next, Avenir, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="92" font-weight="500" letter-spacing="-4">ResizeLint</text>
+</svg>

@@ -13,6 +13,11 @@ All notable changes to ResizeLint are documented here. The project follows seman
 - macOS and Linux release preparation, a composite Action, and a source-build Homebrew formula.
 - ResizeLab, a simulator-only legacy/adaptive example.
 
+### Changed
+
+- Refined the public brand system, README explanation, terminal demonstration,
+  and social preview for a clearer 1.0 presentation.
+
 ### Security
 
 - Bounded input reads, root-confined path handling, symbolic-link rejection for writes, terminal escaping, cancellation checks, and interrupted-write recovery.

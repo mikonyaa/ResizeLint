@@ -1,23 +1,34 @@
 <p align="center">
-  <img src="Assets/resizelint-mark.svg" width="112" height="112" alt="ResizeLint window-frame mark">
+  <img src="Assets/resizelint-logo.svg" width="560" alt="ResizeLint — static analysis for adaptive Swift layouts">
 </p>
-
-<h1 align="center">ResizeLint</h1>
 
 <p align="center"><strong>Catch the UIKit assumptions that break resizable iPhone apps.</strong></p>
 
-ResizeLint is the deterministic verification layer for Swift apps that need to work in every window size.
+<p align="center">
+  <a href="#installation">Install</a> ·
+  <a href="#20-second-terminal-demo">See it run</a> ·
+  <a href="Docs/Rules/README.md">Browse rules</a> ·
+  <a href="Docs/CLI.md">CLI reference</a>
+</p>
+
+ResizeLint is a local static analyzer for Swift applications that must remain correct when the window no longer matches the physical device. It finds layout decisions built on process-global or device-shaped assumptions—such as `UIScreen.main` bounds, device idiom, interface orientation, and arbitrary global windows—and points to scene-local or container-driven alternatives.
+
+It scans Swift source, property lists, and Xcode project metadata, then produces stable diagnostics for people and automation. Human and Xcode output make findings easy to fix locally; JSON and SARIF integrate with CI and code scanning. Analysis is deterministic, source stays on the machine, and ResizeLint has no daemon, account, telemetry, or cloud service.
+
+- **Focused:** nine high-confidence rules for UIKit geometry, scene lifecycle, and adaptive layout decisions.
+- **Adoptable:** baselines, scoped suppressions, severity overrides, and one deliberately conservative safe fix.
+- **Automation-ready:** stable rule IDs, reproducible ordering, machine-readable reports, and a checksum-verifying GitHub Action.
 
 ## Installation
 
-Homebrew installation is available with the 1.0 release:
+Homebrew installation becomes available with the signed 1.0 release:
 
 ```bash
 brew install mikonyaa/tap/resizelint
 resizelint version
 ```
 
-Build the current source checkout with Swift 6.3.3:
+Until then, build the current source checkout with Swift 6.3.3:
 
 ```bash
 git clone https://github.com/mikonyaa/ResizeLint.git
@@ -26,7 +37,7 @@ swift build -c release
 .build/release/resizelint version
 ```
 
-ResizeLint supports macOS 14 or newer and Ubuntu 22.04 or newer on x86_64.
+ResizeLint supports macOS 14 or newer on Apple silicon and Intel, plus Ubuntu 22.04 or newer on x86_64.
 
 ## 20-second terminal demo
 
@@ -36,25 +47,35 @@ Sources/GalleryView.swift:42:21: error: [RL001] UIScreen.main bounds do not desc
 Sources/GridViewController.swift:18:17: warning: [RL006] Choose layout from size classes or the actual container size, not the device idiom.
 ```
 
-![Terminal showing ResizeLint diagnostics for a legacy gallery](Assets/terminal-demo.png)
+![A dark terminal showing a local ResizeLint run, an RL001 error, its scene-local remediation, and a concise summary](Assets/terminal-demo.png)
 
 ## Why resizing matters
 
-A phone interface can now appear in window configurations that do not match the physical display. Screen-wide bounds, device idiom, interface orientation, and globally selected windows are therefore unreliable layout inputs. ResizeLint checks these assumptions with stable diagnostics that can run locally, in Xcode, or in CI.
+A phone interface can appear in a window whose size, aspect ratio, and environment do not match the physical display. Code that asks “what device is this?” can therefore choose the wrong layout even though it compiled and looked correct in a full-screen simulator.
+
+Adaptive code asks the container instead: view bounds for geometry, traits for presentation choices, and scene-local objects for windows and display context. ResizeLint detects the most consequential global assumptions and explains the narrower input that should replace each one. The same checks run locally, in Xcode, and in CI, so resizing regressions can be blocked before runtime QA.
 
 ResizeLint does not rewrite app architecture and does not upload source. It can verify manual modernization work or changes produced by automated modernization tools.
 
 ## Rules
 
-- **RL001 · error · main-screen-bounds** — flags `UIScreen.main` bounds used as local layout geometry.
-- **RL002 · warning · main-screen-scale** — prefers trait or scene-local display scale.
-- **RL003 · warning · main-screen-reference** — catches remaining `UIScreen.main` dependencies.
-- **RL004 · error · global-window-access** — rejects arbitrary global current-window selection.
-- **RL005 · error · global-status-bar-geometry** — replaces process-global status-bar geometry with scene-local context.
-- **RL006 · warning · idiom-layout-decision** — finds phone/pad checks that drive layout.
-- **RL007 · warning · orientation-layout-decision** — finds orientation checks that drive layout.
-- **RL008 · error · legacy-app-lifecycle** — reports a proven app-level absence of scene lifecycle.
-- **RL009 · info · fullscreen-requirement-review** — requests a deliberate review of full-screen requirements.
+### Errors
+
+- **RL001 · main-screen-bounds** — flags `UIScreen.main` bounds used as local layout geometry.
+- **RL004 · global-window-access** — rejects arbitrary process-global current-window selection.
+- **RL005 · global-status-bar-geometry** — replaces global status-bar geometry with scene-local context.
+- **RL008 · legacy-app-lifecycle** — reports a proven app-level absence of scene lifecycle.
+
+### Warnings
+
+- **RL002 · main-screen-scale** — prefers trait or scene-local display scale.
+- **RL003 · main-screen-reference** — catches remaining `UIScreen.main` dependencies.
+- **RL006 · idiom-layout-decision** — finds phone/pad checks that drive layout.
+- **RL007 · orientation-layout-decision** — finds orientation checks that drive layout.
+
+### Review
+
+- **RL009 · fullscreen-requirement-review** — requests a deliberate review of full-screen requirements.
 
 See [the complete rule documentation](Docs/Rules/README.md) for detection boundaries and adaptive examples. The release candidate reached 100% error and warning precision on the documented [external validation corpus](Docs/ExternalCorpus.md).
 
