@@ -26,6 +26,7 @@ fi
 listing="$temporary_root/listing.txt"
 tar -tzf "$first" > "$listing"
 grep -q '^ResizeLint-1.0.0/Package.swift$' "$listing"
+grep -q '^ResizeLint-1.0.0/Tests/ResizeLintCoreTests/VersionTests.swift$' "$listing"
 
 if grep -Eq '(^|/)Formula/|(^|/)\.build/|(^|/)\.git/' "$listing"; then
   echo "Source archive contains a release-excluded path" >&2

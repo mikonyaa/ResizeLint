@@ -34,8 +34,7 @@ rm -rf \
   "$staging/$prefix/.build" \
   "$staging/$prefix/.github" \
   "$staging/$prefix/Artifacts" \
-  "$staging/$prefix/Formula" \
-  "$staging/$prefix/Tests"
+  "$staging/$prefix/Formula"
 
 find "$staging/$prefix" -exec touch -h -t 200001010000 {} +
 listing="$temporary_root/files.txt"
