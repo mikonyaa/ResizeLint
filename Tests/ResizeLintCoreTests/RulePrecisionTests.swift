@@ -87,6 +87,22 @@ func utf8Columns() async {
     #expect(diagnostic?.range.start.column == 29)
 }
 
+@Test("A generic variable named orientation is not a UIKit orientation decision")
+func genericOrientationVariableIsAllowed() async {
+    let result = await analyzeSwift("func layout(orientation: Int) { let width = orientation > 0 ? 320 : 640 }")
+    #expect(result.diagnostics.contains { $0.ruleID == "RL007" } == false)
+}
+
+@Test("Suppression-like text inside a string is inert")
+func suppressionTextInsideStringIsIgnored() async {
+    let result = await analyzeSwift("""
+    let example = "// resizelint:disable-next-line RL001 -- Documentation text."
+    let bounds = UIScreen.main.bounds
+    """)
+    #expect(result.notices.contains { $0.kind == .malformedSuppression } == false)
+    #expect(result.diagnostics.contains { $0.ruleID == "RL001" && !$0.isSuppressed })
+}
+
 private func analyzeSwift(_ source: String) async -> AnalysisResult {
     await ResizeAnalyzer().analyze(AnalysisRequest(files: [
         SourceInput(path: "Sources/Sample.swift", contents: source),

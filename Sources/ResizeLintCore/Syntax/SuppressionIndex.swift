@@ -11,7 +11,9 @@ struct SuppressionIndex: Sendable {
         var notices: [OperationalNotice] = []
         var declarationSeen = false
 
-        for (offset, line) in source.components(separatedBy: .newlines).enumerated() {
+        let directiveLines = LexicalMasker.maskingStringLiterals(in: source).components(separatedBy: .newlines)
+        let codeLines = LexicalMasker.maskingCommentsAndLiterals(in: source).components(separatedBy: .newlines)
+        for (offset, line) in directiveLines.enumerated() {
             let lineNumber = offset + 1
             if let directive = Self.directive(in: line, name: "disable-next-line") {
                 if directive.reason.isEmpty {
@@ -33,7 +35,7 @@ struct SuppressionIndex: Sendable {
                 notices.append(Self.malformed(path: path, line: lineNumber))
                 continue
             }
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let trimmed = codeLines[offset].trimmingCharacters(in: .whitespaces)
             if !trimmed.isEmpty, !trimmed.hasPrefix("//"), !trimmed.hasPrefix("/*"), !trimmed.hasPrefix("*") {
                 declarationSeen = true
             }

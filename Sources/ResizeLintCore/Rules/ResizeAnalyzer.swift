@@ -138,7 +138,7 @@ public struct ResizeAnalyzer: Sendable {
             matches.append(RuleMatch(ruleID: "RL006", range: range))
         }
 
-        let orientationPattern = #"\b(?:(?:UIDevice\s*\.\s*current\s*\.\s*)?orientation|interfaceOrientation|statusBarOrientation)(?:\s*\.\s*(?:isPortrait|isLandscape))?\b"#
+        let orientationPattern = #"\b(?:UIDevice\s*\.\s*current\s*\.\s*orientation|interfaceOrientation|statusBarOrientation)(?:\s*\.\s*(?:isPortrait|isLandscape))?\b"#
         for range in regexMatches(orientationPattern, in: masked) where isLayoutDecision(range: range, source: masked, orientation: true) {
             matches.append(RuleMatch(ruleID: "RL007", range: range))
         }

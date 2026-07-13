@@ -14,7 +14,15 @@ enum LexicalMasker {
         return String(decoding: units, as: UTF16.self)
     }
 
+    static func maskingStringLiterals(in source: String) -> String {
+        masking(in: source, comments: false)
+    }
+
     static func maskingCommentsAndLiterals(in source: String) -> String {
+        masking(in: source, comments: true)
+    }
+
+    private static func masking(in source: String, comments: Bool) -> String {
         let units = Array(source.utf16)
         var output = units
         var index = 0
@@ -31,7 +39,7 @@ enum LexicalMasker {
         while index < units.count {
             if matches([47, 47], at: index) {
                 while index < units.count, !isNewline(units[index]) {
-                    mask(index)
+                    if comments { mask(index) }
                     index += 1
                 }
                 continue
@@ -41,13 +49,15 @@ enum LexicalMasker {
                 while index < units.count {
                     if matches([47, 42], at: index) {
                         depth += 1
-                        mask(index); mask(index + 1); index += 2
+                        if comments { mask(index); mask(index + 1) }
+                        index += 2
                     } else if matches([42, 47], at: index) {
                         depth -= 1
-                        mask(index); mask(index + 1); index += 2
+                        if comments { mask(index); mask(index + 1) }
+                        index += 2
                         if depth == 0 { break }
                     } else {
-                        mask(index)
+                        if comments { mask(index) }
                         index += 1
                     }
                 }
