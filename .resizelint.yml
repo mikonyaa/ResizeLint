@@ -1,0 +1,20 @@
+version: 1
+
+include:
+  - "**/*.swift"
+  - "**/Info.plist"
+  - "**/*.xcodeproj/project.pbxproj"
+
+exclude:
+  - ".git/**"
+  - ".build/**"
+  - "DerivedData/**"
+  - "Pods/**"
+  - "Carthage/**"
+  - "**/Generated/**"
+  - "Examples/ResizeLab/Sources/Legacy/**"
+
+baseline: ".resizelint-baseline.json"
+fail_on: error
+rules: {}
+overrides: []

@@ -124,10 +124,31 @@ public struct ConfigurationOverrides: Sendable {
 
 enum Glob {
     static func matches(_ path: String, pattern: String) -> Bool {
-        let escaped = NSRegularExpression.escapedPattern(for: pattern)
-            .replacingOccurrences(of: "\\*\\*", with: ".*")
-            .replacingOccurrences(of: "\\*", with: "[^/]*")
-            .replacingOccurrences(of: "\\?", with: "[^/]")
-        return path.range(of: "^\(escaped)$", options: .regularExpression) != nil
+        let characters = Array(pattern)
+        var expression = "^"
+        var index = 0
+        while index < characters.count {
+            let character = characters[index]
+            if character == "*", index + 1 < characters.count, characters[index + 1] == "*" {
+                if index + 2 < characters.count, characters[index + 2] == "/" {
+                    expression += "(?:.*/)?"
+                    index += 3
+                } else {
+                    expression += ".*"
+                    index += 2
+                }
+            } else if character == "*" {
+                expression += "[^/]*"
+                index += 1
+            } else if character == "?" {
+                expression += "[^/]"
+                index += 1
+            } else {
+                expression += NSRegularExpression.escapedPattern(for: String(character))
+                index += 1
+            }
+        }
+        expression += "$"
+        return path.range(of: expression, options: .regularExpression) != nil
     }
 }

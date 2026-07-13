@@ -14,7 +14,12 @@ public enum ProjectScanner {
         configuration: ResizeLintConfiguration
     ) async throws -> AnalysisResult {
         try Task.checkCancellation()
-        let discovered = try SourceDiscovery().discover(paths: paths, scanRoot: root)
+        let discovered = try SourceDiscovery().discover(paths: paths, scanRoot: root).filter { file in
+            let included = configuration.include.isEmpty
+                || configuration.include.contains { Glob.matches(file.relativePath, pattern: $0) }
+            let excluded = configuration.exclude.contains { Glob.matches(file.relativePath, pattern: $0) }
+            return included && !excluded
+        }
         var inputs: [SourceInput] = []
         var notices: [OperationalNotice] = []
         for file in discovered {

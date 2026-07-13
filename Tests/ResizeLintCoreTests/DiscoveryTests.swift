@@ -35,6 +35,23 @@ func discoveryRejectsSymlinkEscape() throws {
     #expect(files.isEmpty)
 }
 
+@Test("Project scanner applies configured include and exclude globs")
+func scannerAppliesConfiguredGlobs() async throws {
+    let root = try temporaryDirectory(named: "configured-globs")
+    defer { try? FileManager.default.removeItem(at: root) }
+    try write("let included = UIScreen.main.bounds", to: root.appending(path: "Sources/Included.swift"))
+    try write("let excluded = UIScreen.main.bounds", to: root.appending(path: "Examples/Legacy/Excluded.swift"))
+    let configuration = ResizeLintConfiguration(
+        include: ["**/*.swift"],
+        exclude: ["Examples/Legacy/**"]
+    )
+
+    let result = try await ProjectScanner.scan(paths: [root], root: root, configuration: configuration)
+
+    #expect(result.filesAnalyzed == 1)
+    #expect(result.diagnostics.map(\.path) == ["Sources/Included.swift"])
+}
+
 private func temporaryDirectory(named name: String) throws -> URL {
     let url = FileManager.default.temporaryDirectory
         .appending(path: "resizelint-tests-\(name)-\(UUID().uuidString)")
