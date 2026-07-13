@@ -121,7 +121,8 @@ public struct ResizeAnalyzer: Sendable {
             .filter { candidate in !covered.contains(where: { NSLocationInRange(candidate.location, $0) }) }
         matches.append(contentsOf: generic.map { RuleMatch(ruleID: "RL003", range: $0) })
 
-        for range in regexMatches(#"\bUIApplication\s*\.\s*shared\s*\.\s*(?:windows|keyWindow)\b"#, in: masked) {
+        for range in regexMatches(#"\bUIApplication\s*\.\s*shared\s*\.\s*(?:windows|keyWindow)\b"#, in: masked)
+        where !isBroadcastWindowIteration(range: range, source: masked) {
             matches.append(RuleMatch(ruleID: "RL004", range: range))
         }
         for range in regexMatches(#"\bUIApplication\s*\.\s*shared\s*\.\s*connectedScenes\b"#, in: masked)
@@ -350,24 +351,49 @@ public struct ResizeAnalyzer: Sendable {
     }
 
     private static func isBroadcastSceneIteration(range: NSRange, source: String) -> Bool {
-        let lower = max(0, range.location - 80)
-        let upper = min(source.utf16.count, range.location + range.length + 120)
+        let lower = max(0, range.location - 160)
+        let upper = min(source.utf16.count, range.location + range.length + 600)
         let contextRange = NSRange(location: lower, length: upper - lower)
         guard let swiftRange = Range(contextRange, in: source) else { return false }
         let context = String(source[swiftRange])
-        let iterates = context.range(of: #"(?:for\s+\w+\s+in\s+.*connectedScenes|connectedScenes\s*\.\s*forEach)"#,
-                                     options: [.regularExpression, .caseInsensitive]) != nil
+        let directIteration = context.range(
+            of: #"(?:for\s+\w+\s+in\s+[^\n]*connectedScenes|connectedScenes[\s\S]{0,500}?\.\s*forEach)"#,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil
+        let namedCollection = context.range(
+            of: #"(?:let|var)\s+(\w+)\s*=\s*UIApplication\s*\.\s*shared\s*\.\s*connectedScenes[\s\S]{0,500}?for\s+\w+\s+in\s+\1\b"#,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil
+        let flattenedCollection = context.range(
+            of: #"connectedScenes[\s\S]{0,500}?flatMap[\s\S]{0,80}?windows\b"#,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil
         let selects = context.range(of: #"\.\s*first\b"#, options: .regularExpression) != nil
-        return iterates && !selects
+        return (directIteration || namedCollection || flattenedCollection) && !selects
+    }
+
+    private static func isBroadcastWindowIteration(range: NSRange, source: String) -> Bool {
+        let upper = min(source.utf16.count, range.location + range.length + 120)
+        let contextRange = NSRange(location: range.location, length: upper - range.location)
+        guard let swiftRange = Range(contextRange, in: source) else { return false }
+        let context = String(source[swiftRange])
+        return context.range(
+            of: #"(?:windows|keyWindow)\s*\.\s*forEach\b"#,
+            options: [.regularExpression, .caseInsensitive]
+        ) != nil
     }
 
     private static func isLayoutDecision(range: NSRange, source: String, orientation: Bool) -> Bool {
+        if orientation, isOrientationDeclaration(range: range, source: source) { return false }
         let lower = max(0, range.location - 120)
         let upper = min(source.utf16.count, range.location + range.length + 180)
         guard let swiftRange = Range(NSRange(location: lower, length: upper - lower), in: source) else { return false }
         let context = String(source[swiftRange]).lowercased()
         if orientation {
-            let excluded = ["supportedinterfaceorientations", "camera", "motion", "captureconnection", "videorientation"]
+            let excluded = [
+                "supportedinterfaceorientations", "camera", "motion", "captureconnection",
+                "videoorientation", "avcapture",
+            ]
             if excluded.contains(where: context.contains) { return false }
         } else {
             let capability = ["camera", "sensor", "haptic", "capability"]
@@ -375,10 +401,26 @@ public struct ResizeAnalyzer: Sendable {
         }
         let layoutTerms = [
             "width", "height", "size", "frame", "constraint", "column", "grid", "layout",
-            "sidebar", "tab", "navigation", "modal", "presentation", "split", "compact",
-            "regular", "rotation", "if ", "?",
+            "sidebar", "navigation", "modal", "presentation", "split", "compact",
+            "regular", "rotation", "alert", "actionsheet", "popover", "sheet",
         ]
-        return layoutTerms.contains(where: context.contains)
+        let tabLayout = context.range(
+            of: #"\btab(?:bar)?\b"#,
+            options: .regularExpression
+        ) != nil
+        return tabLayout || layoutTerms.contains(where: context.contains)
+    }
+
+    private static func isOrientationDeclaration(range: NSRange, source: String) -> Bool {
+        guard let match = Range(range, in: source) else { return false }
+        let tail = source[match.lowerBound..<source.index(
+            match.upperBound,
+            offsetBy: min(80, source.distance(from: match.upperBound, to: source.endIndex))
+        )]
+        return tail.range(
+            of: #"^interfaceOrientation\s*:\s*UIInterfaceOrientation\b"#,
+            options: .regularExpression
+        ) != nil
     }
 }
 

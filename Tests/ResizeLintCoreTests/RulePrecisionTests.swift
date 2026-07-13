@@ -13,15 +13,76 @@ func connectedSceneBroadcastIsAllowed() async {
     #expect(result.diagnostics.contains { $0.ruleID == "RL004" } == false)
 }
 
+@Test("Broadcast iteration over every global window is not current-window selection")
+func globalWindowBroadcastIsAllowed() async {
+    let result = await analyzeSwift("UIApplication.shared.windows.forEach { window in update(window) }")
+    #expect(result.diagnostics.contains { $0.ruleID == "RL004" } == false)
+}
+
+@Test("A named collection of connected scenes can be iterated without selecting one")
+func namedSceneCollectionBroadcastIsAllowed() async {
+    let result = await analyzeSwift("""
+    let windowScenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    for windowScene in windowScenes {
+        update(windowScene)
+    }
+    """)
+    #expect(result.diagnostics.contains { $0.ruleID == "RL004" } == false)
+}
+
+@Test("Collecting every connected-scene window for a broadcast is allowed")
+func flattenedWindowCollectionIsAllowed() async {
+    let result = await analyzeSwift("""
+    func allWindows() -> [UIWindow] {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\\.windows)
+    }
+    """)
+    #expect(result.diagnostics.contains { $0.ruleID == "RL004" } == false)
+}
+
 @Test("Device-capability idiom checks do not trigger the layout rule")
 func nonLayoutIdiomCheckIsAllowed() async {
     let result = await analyzeSwift("let supportsPencilCapability = UIDevice.current.userInterfaceIdiom == .pad")
     #expect(result.diagnostics.contains { $0.ruleID == "RL006" } == false)
 }
 
+@Test("Device identity used for protocol metadata is not a layout decision")
+func userAgentIdiomCheckIsAllowed() async {
+    let result = await analyzeSwift("if UIDevice.current.userInterfaceIdiom == .pad { osName = \"OS\" }")
+    #expect(result.diagnostics.contains { $0.ruleID == "RL006" } == false)
+}
+
+@Test("Idiom-based presentation style remains a layout diagnostic")
+func idiomPresentationStyleIsReported() async {
+    let result = await analyzeSwift(
+        "let alertStyle: UIAlertController.Style = UIDevice.current.userInterfaceIdiom == .pad ? .alert : .actionSheet"
+    )
+    #expect(result.diagnostics.contains { $0.ruleID == "RL006" })
+}
+
+@Test("Selecting web-preview content for a tablet is not an app layout decision")
+func previewContentIdiomCheckIsAllowed() async {
+    let result = await analyzeSwift(
+        "let previewDevice = UIDevice.current.userInterfaceIdiom == .pad ? PreviewDevice.tablet : .mobile"
+    )
+    #expect(result.diagnostics.contains { $0.ruleID == "RL006" } == false)
+}
+
 @Test("Orientation passed to a camera API does not trigger the layout rule")
 func cameraOrientationIsAllowed() async {
     let result = await analyzeSwift("captureConnection.videoOrientation = windowScene.interfaceOrientation")
+    #expect(result.diagnostics.contains { $0.ruleID == "RL007" } == false)
+}
+
+@Test("An interface-orientation parameter declaration is not a layout decision")
+func orientationParameterDeclarationIsAllowed() async {
+    let result = await analyzeSwift("""
+    protocol Orientable {
+        func layout(forInterfaceOrientation interfaceOrientation: UIInterfaceOrientation)
+    }
+    """)
     #expect(result.diagnostics.contains { $0.ruleID == "RL007" } == false)
 }
 
