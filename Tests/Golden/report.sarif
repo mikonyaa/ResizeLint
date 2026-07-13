@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ResizeLint",
+          "version": "1.0.0",
+          "informationUri": "https://github.com/mikonyaa/ResizeLint",
+          "rules": [
+            { "id": "RL001", "name": "main-screen-bounds", "defaultConfiguration": { "level": "error" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL001.md" },
+            { "id": "RL002", "name": "main-screen-scale", "defaultConfiguration": { "level": "warning" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL002.md" },
+            { "id": "RL003", "name": "main-screen-reference", "defaultConfiguration": { "level": "warning" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL003.md" },
+            { "id": "RL004", "name": "global-window-access", "defaultConfiguration": { "level": "error" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL004.md" },
+            { "id": "RL005", "name": "global-status-bar-geometry", "defaultConfiguration": { "level": "error" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL005.md" },
+            { "id": "RL006", "name": "idiom-layout-decision", "defaultConfiguration": { "level": "warning" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL006.md" },
+            { "id": "RL007", "name": "orientation-layout-decision", "defaultConfiguration": { "level": "warning" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL007.md" },
+            { "id": "RL008", "name": "legacy-app-lifecycle", "defaultConfiguration": { "level": "error" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL008.md" },
+            { "id": "RL009", "name": "fullscreen-requirement-review", "defaultConfiguration": { "level": "note" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL009.md" }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "RL002",
+          "level": "warning",
+          "message": { "text": "Use traitCollection.displayScale or a scene-local screen instead of the main screen scale." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "Sources/View.swift" },
+                "region": { "startLine": 1, "startColumn": 13, "endLine": 1, "endColumn": 32 }
+              }
+            }
+          ],
+          "partialFingerprints": { "resizelint/v1": "sha256:fixture" },
+          "baselineState": "new"
+        }
+      ]
+    }
+  ]
+}

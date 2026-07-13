@@ -264,6 +264,14 @@ public struct ResizeAnalyzer: Sendable {
             syntaxKind: file.kind == .swift ? "memberAccess" : "projectSetting",
             surroundingTokens: matchedSource.components(separatedBy: .whitespacesAndNewlines)
         )
+        let fix = safeFix(
+            ruleID: match.ruleID,
+            matchedSource: matchedSource,
+            file: file,
+            range: stringRange,
+            utf8Offset: startOffset,
+            utf8Length: endOffset - startOffset
+        )
         return Diagnostic(
             ruleID: match.ruleID,
             ruleName: metadata.name,
@@ -277,9 +285,44 @@ public struct ResizeAnalyzer: Sendable {
                 utf8Length: endOffset - startOffset
             ),
             helpURI: metadata.helpURI,
+            fix: fix,
             fingerprint: fingerprint,
             isSuppressed: suppressions?.suppresses(ruleID: match.ruleID, line: start.line) ?? false
         )
+    }
+
+    private static func safeFix(
+        ruleID: String,
+        matchedSource: String,
+        file: SourceInput,
+        range: Range<String.Index>,
+        utf8Offset: Int,
+        utf8Length: Int
+    ) -> SourceEdit? {
+        guard ruleID == "RL002", matchedSource == "UIScreen.main.scale",
+              hasTraitCollectionContext(source: file.contents, before: range.lowerBound) else { return nil }
+        return SourceEdit(
+            path: file.path,
+            utf8Offset: utf8Offset,
+            utf8Length: utf8Length,
+            replacement: "traitCollection.displayScale"
+        )
+    }
+
+    private static func hasTraitCollectionContext(source: String, before index: String.Index) -> Bool {
+        let prefix = String(source[..<index])
+        let pattern = #"\bclass\s+\w+[^\{\n]*:\s*(?:UIView|UIViewController|UITableViewCell|UICollectionViewCell|UIControl)\b[^\{]*\{"#
+        guard let expression = try? NSRegularExpression(pattern: pattern),
+              let declaration = expression.matches(in: prefix, range: NSRange(prefix.startIndex..., in: prefix)).last,
+              let declarationRange = Range(declaration.range, in: prefix) else { return false }
+        let bodyPrefix = prefix[declarationRange.lowerBound...]
+        let depth = bodyPrefix.reduce(into: 0) { depth, character in
+            if character == "{" { depth += 1 }
+            if character == "}" { depth -= 1 }
+        }
+        guard depth > 0 else { return false }
+        let currentLine = prefix.split(separator: "\n", omittingEmptySubsequences: false).last.map(String.init) ?? ""
+        return currentLine.range(of: #"\b(?:static|class)\s+(?:let|var|func)\b"#, options: .regularExpression) == nil
     }
 
     private static func location(in source: String, at index: String.Index) -> SourceLocation {

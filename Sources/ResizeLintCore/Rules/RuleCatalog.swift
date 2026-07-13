@@ -40,3 +40,17 @@ enum RuleCatalog {
         return metadata
     }
 }
+
+public struct RuleDescriptor: Sendable {
+    public let id: String
+    public let name: String
+    public let severity: Severity
+    public let message: String
+    public let helpURI: String
+}
+
+public enum ResizeLintRules {
+    public static let all: [RuleDescriptor] = RuleCatalog.all.map {
+        RuleDescriptor(id: $0.id, name: $0.name, severity: $0.severity, message: $0.message, helpURI: $0.helpURI)
+    }
+}

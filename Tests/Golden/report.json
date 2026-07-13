@@ -1,0 +1,27 @@
+{
+  "diagnostics": [
+    {
+      "baselineState": "absent",
+      "fingerprint": "sha256:fixture",
+      "helpURI": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL002.md",
+      "isSuppressed": false,
+      "message": "Use traitCollection.displayScale or a scene-local screen instead of the main screen scale.",
+      "path": "Sources/View.swift",
+      "range": {
+        "end": { "column": 32, "line": 1 },
+        "start": { "column": 13, "line": 1 },
+        "utf8Length": 19,
+        "utf8Offset": 12
+      },
+      "ruleID": "RL002",
+      "ruleName": "main-screen-scale",
+      "severity": "warning"
+    }
+  ],
+  "fixes": [],
+  "invocation": { "command": "lint", "paths": ["."] },
+  "schemaVersion": 1,
+  "summary": { "errors": 0, "filesAnalyzed": 1, "info": 0, "warnings": 1 },
+  "timing": { "durationSeconds": 0.25 },
+  "toolVersion": "1.0.0"
+}
