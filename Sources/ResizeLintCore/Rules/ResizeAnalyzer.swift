@@ -54,15 +54,22 @@ public struct ResizeAnalyzer: Sendable {
         let batchSize = max(1, request.configuration.jobs)
 
         for start in stride(from: 0, to: request.files.count, by: batchSize) {
+            if Task.isCancelled { break }
             let end = min(start + batchSize, request.files.count)
             let batch = Array(request.files[start..<end])
             await withTaskGroup(of: FileAnalysis.self) { group in
                 for file in batch {
-                    group.addTask { Self.analyzeFile(file, configuration: request.configuration) }
+                    _ = group.addTaskUnlessCancelled {
+                        Self.analyzeFile(file, configuration: request.configuration)
+                    }
                 }
                 for await result in group {
                     diagnostics.append(contentsOf: result.diagnostics)
                     notices.append(contentsOf: result.notices)
+                    if Task.isCancelled {
+                        group.cancelAll()
+                        break
+                    }
                 }
             }
         }
@@ -160,6 +167,22 @@ public struct ResizeAnalyzer: Sendable {
         configuration: ResizeLintConfiguration
     ) -> FileAnalysis {
         guard configuration.isRuleEnabled("RL009", path: file.path) else { return FileAnalysis() }
+        var notices: [OperationalNotice] = []
+        if file.kind == .propertyList {
+            do {
+                _ = try PropertyListSerialization.propertyList(
+                    from: Data(file.contents.utf8),
+                    options: [],
+                    format: nil
+                )
+            } catch {
+                notices.append(OperationalNotice(
+                    kind: .syntaxError,
+                    path: file.path,
+                    message: "Malformed property list; analysis continued with recovery."
+                ))
+            }
+        }
         let pattern: String
         switch file.kind {
         case .propertyList:
@@ -187,7 +210,7 @@ public struct ResizeAnalyzer: Sendable {
                 suppressions: nil
             )
         }.compactMap { $0 }
-        return FileAnalysis(diagnostics: diagnostics)
+        return FileAnalysis(diagnostics: diagnostics, notices: notices)
     }
 
     private static func analyzeProject(

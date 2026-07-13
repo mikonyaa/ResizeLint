@@ -46,8 +46,8 @@ public enum Reporter {
     private static func human(_ result: AnalysisResult, context: ReportContext, color: Bool) -> String {
         let active = result.diagnostics.filter { !$0.isSuppressed && $0.baselineState != .unchanged }
         var sections = active.map { diagnostic in
-            "\(diagnostic.path):\(diagnostic.range.start.line):\(diagnostic.range.start.column)  \(diagnostic.severity.rawValue)  \(diagnostic.ruleID)\n"
-                + "\(diagnostic.message)\n\n\(diagnostic.helpURI)"
+            "\(TerminalEscaping.escape(diagnostic.path)):\(diagnostic.range.start.line):\(diagnostic.range.start.column)  \(diagnostic.severity.rawValue)  \(diagnostic.ruleID)\n"
+                + "\(TerminalEscaping.escape(diagnostic.message))\n\n\(TerminalEscaping.escape(diagnostic.helpURI))"
         }
         let counts = summary(for: active, filesAnalyzed: result.filesAnalyzed)
         let total = active.count
@@ -61,7 +61,7 @@ public enum Reporter {
         result.diagnostics
             .filter { !$0.isSuppressed && $0.baselineState != .unchanged }
             .map {
-                "\($0.path):\($0.range.start.line):\($0.range.start.column): \($0.severity.rawValue): [\($0.ruleID)] \($0.message)"
+                "\(TerminalEscaping.escape($0.path)):\($0.range.start.line):\($0.range.start.column): \($0.severity.rawValue): [\($0.ruleID)] \(TerminalEscaping.escape($0.message))"
             }
             .joined(separator: "\n") + (result.diagnostics.isEmpty ? "" : "\n")
     }
@@ -71,7 +71,10 @@ public enum Reporter {
         let report = JSONReport(
             schemaVersion: 1,
             toolVersion: ResizeLintVersion.current,
-            invocation: Invocation(command: context.command, paths: context.paths),
+            invocation: Invocation(
+                command: context.command,
+                paths: context.paths.map(sanitizePath)
+            ),
             summary: summary(for: active, filesAnalyzed: result.filesAnalyzed),
             diagnostics: active,
             fixes: active.compactMap(\.fix),
@@ -95,7 +98,7 @@ public enum Reporter {
                 level: sarifLevel(diagnostic.severity),
                 message: SARIFMessage(text: diagnostic.message),
                 locations: [SARIFLocation(physicalLocation: SARIFPhysicalLocation(
-                    artifactLocation: SARIFArtifactLocation(uri: diagnostic.path),
+                    artifactLocation: SARIFArtifactLocation(uri: sarifURI(diagnostic.path)),
                     region: SARIFRegion(
                         startLine: diagnostic.range.start.line,
                         startColumn: diagnostic.range.start.column,
@@ -124,7 +127,7 @@ public enum Reporter {
     }
 
     private static func sanitize(_ diagnostic: Diagnostic) -> Diagnostic {
-        let path = diagnostic.path.hasPrefix("/") ? URL(filePath: diagnostic.path).lastPathComponent : diagnostic.path
+        let path = sanitizePath(diagnostic.path)
         return Diagnostic(
             ruleID: diagnostic.ruleID,
             ruleName: diagnostic.ruleName,
@@ -165,6 +168,16 @@ public enum Reporter {
         case .warning: "warning"
         case .info: "note"
         }
+    }
+
+    private static func sanitizePath(_ path: String) -> String {
+        path.hasPrefix("/") ? URL(filePath: path).lastPathComponent : path
+    }
+
+    private static func sarifURI(_ path: String) -> String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~/")
+        return path.addingPercentEncoding(withAllowedCharacters: allowed) ?? path
     }
 
     private static func encode<T: Encodable>(_ value: T) throws -> String {

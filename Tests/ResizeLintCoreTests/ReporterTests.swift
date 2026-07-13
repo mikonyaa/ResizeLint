@@ -46,6 +46,72 @@ func reporterPathPrivacy() throws {
     #expect(output.contains("View.swift"))
 }
 
+@Test("Machine reporters sanitize absolute invocation paths")
+func reporterInvocationPrivacy() throws {
+    let context = ReportContext(
+        command: "lint",
+        paths: ["/Users/example/PrivateProject"],
+        durationSeconds: 0.25
+    )
+
+    let output = try Reporter.render(format: .json, result: reportResult, context: context)
+
+    #expect(output.contains("/Users/") == false)
+    #expect(output.contains("PrivateProject"))
+}
+
+@Test("Terminal reporters neutralize control characters")
+func terminalReporterEscaping() throws {
+    let diagnostic = Diagnostic(
+        ruleID: "RL002",
+        ruleName: "main-screen-scale",
+        severity: .warning,
+        message: "Warning\u{1B}[31m\nforged",
+        path: "Sources/Bad\u{1B}[2J\nInjected.swift",
+        range: SourceRange(
+            start: SourceLocation(line: 1, column: 1),
+            end: SourceLocation(line: 1, column: 2),
+            utf8Offset: 0,
+            utf8Length: 1
+        ),
+        helpURI: "https://example.invalid/rule",
+        fingerprint: "sha256:control"
+    )
+    let result = AnalysisResult(diagnostics: [diagnostic], notices: [], filesAnalyzed: 1)
+
+    let human = try Reporter.render(format: .human, result: result, context: reportContext)
+    let xcode = try Reporter.render(format: .xcode, result: result, context: reportContext)
+
+    #expect(human.unicodeScalars.contains { $0.value == 0x1B } == false)
+    #expect(xcode.unicodeScalars.contains { $0.value == 0x1B } == false)
+    #expect(human.contains("Bad\\u{001B}[2J\\nInjected.swift"))
+    #expect(xcode.contains("Warning\\u{001B}[31m\\nforged"))
+}
+
+@Test("JSON and SARIF encode control characters without raw injection")
+func machineReporterEscaping() throws {
+    let diagnostic = makeDiagnostic(path: "Sources/Bad\u{1B}\n.swift")
+    let result = AnalysisResult(diagnostics: [diagnostic], notices: [], filesAnalyzed: 1)
+
+    for format in [ReportFormat.json, .sarif] {
+        let output = try Reporter.render(format: format, result: result, context: reportContext)
+        #expect(output.unicodeScalars.contains { $0.value == 0x1B } == false)
+        let object = try JSONSerialization.jsonObject(with: #require(output.data(using: .utf8)))
+        if format == .sarif {
+            let document = try #require(object as? [String: Any])
+            let runs = try #require(document["runs"] as? [[String: Any]])
+            let results = try #require(runs.first?["results"] as? [[String: Any]])
+            let locations = try #require(results.first?["locations"] as? [[String: Any]])
+            let physical = try #require(locations.first?["physicalLocation"] as? [String: Any])
+            let artifact = try #require(physical["artifactLocation"] as? [String: Any])
+            let uri = try #require(artifact["uri"] as? String)
+            #expect(uri == "Sources/Bad%1B%0A.swift")
+        } else {
+            #expect(output.contains("\\u001B") || output.contains("\\u001b"))
+        }
+    }
+}
+
 private let reportContext = ReportContext(
     command: "lint",
     paths: ["."],

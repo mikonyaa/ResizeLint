@@ -46,7 +46,11 @@ enum CLIApplication {
             let invocation = try parse(arguments)
             return await run(invocation: invocation, currentDirectory: currentDirectory)
         } catch {
-            return CLIResult(exitCode: 2, standardOutput: "", standardError: "\(error)\n")
+            return CLIResult(
+                exitCode: 2,
+                standardOutput: "",
+                standardError: TerminalEscaping.escape("\(error)") + "\n"
+            )
         }
     }
 
@@ -74,11 +78,11 @@ enum CLIApplication {
         } catch let error as CLIUserError {
             return invalid(error)
         } catch let error as ScanError {
-            return CLIResult(exitCode: 3, standardOutput: "", standardError: "\(error)\n")
+            return operational("\(error)")
         } catch is CancellationError {
             return CLIResult(exitCode: 3, standardOutput: "", standardError: "Analysis cancelled.\n")
         } catch {
-            return CLIResult(exitCode: 3, standardOutput: "", standardError: "Operational failure: \(error)\n")
+            return operational("Operational failure: \(error)")
         }
     }
 
@@ -94,20 +98,30 @@ enum CLIApplication {
 
         switch invocation.operation {
         case let .baselineCreate(force):
-            let url = baselineURL(invocation, configuration: configuration, root: root)
+            let url = try baselineURL(invocation, configuration: configuration, root: root)
             try BaselineStore.create(findings: BaselineStore.entries(from: result.diagnostics), at: url, force: force)
-            return CLIResult(exitCode: 0, standardOutput: "Created \(relative(url, root: root)).\n", standardError: notices(result, verbose: invocation.verbose))
+            return CLIResult(
+                exitCode: 0,
+                standardOutput: "Created \(TerminalEscaping.escape(relative(url, root: root))).\n",
+                standardError: notices(result, verbose: invocation.verbose)
+            )
         case .baselineUpdate:
-            let url = baselineURL(invocation, configuration: configuration, root: root)
+            let url = try baselineURL(invocation, configuration: configuration, root: root)
             try BaselineStore.update(findings: BaselineStore.entries(from: result.diagnostics), at: url)
-            return CLIResult(exitCode: 0, standardOutput: "Updated \(relative(url, root: root)).\n", standardError: notices(result, verbose: invocation.verbose))
+            return CLIResult(
+                exitCode: 0,
+                standardOutput: "Updated \(TerminalEscaping.escape(relative(url, root: root))).\n",
+                standardError: notices(result, verbose: invocation.verbose)
+            )
         case .baselineCheck:
-            let url = baselineURL(invocation, configuration: configuration, root: root)
+            let url = try baselineURL(invocation, configuration: configuration, root: root)
             let document = try BaselineStore.load(from: url)
             let issues = BaselineStore.check(document, current: BaselineStore.entries(from: result.diagnostics))
             let output = issues.isEmpty
                 ? "Baseline is current.\n"
-                : issues.map { "\($0.kind.rawValue): \($0.entry.ruleID) \($0.entry.path)" }.joined(separator: "\n") + "\n"
+                : issues.map {
+                    "\($0.kind.rawValue): \(TerminalEscaping.escape($0.entry.ruleID)) \(TerminalEscaping.escape($0.entry.path))"
+                }.joined(separator: "\n") + "\n"
             return CLIResult(exitCode: issues.isEmpty ? 0 : 1, standardOutput: output, standardError: notices(result, verbose: invocation.verbose))
         case let .fix(dryRun):
             return try await fix(
@@ -152,7 +166,7 @@ enum CLIApplication {
         var diffs = ""
         for path in editsByPath.keys.sorted() {
             guard let edits = editsByPath[path] else { continue }
-            let url = root.appending(path: path)
+            let url = try resolveInsideRoot(path, relativeTo: root)
             let source = try String(contentsOf: url, encoding: .utf8)
             if dryRun {
                 diffs += try FixEngine.preview(source: source, edits: edits, path: path).unifiedDiff
@@ -196,7 +210,7 @@ enum CLIApplication {
         )
         var standardOutput = invocation.quiet ? "" : output
         if let path = invocation.output {
-            let url = resolve(path, relativeTo: root)
+            let url = try resolveInsideRoot(path, relativeTo: root)
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Data(output.utf8).write(to: url, options: .atomic)
             standardOutput = ""
@@ -231,14 +245,18 @@ enum CLIApplication {
         configuration: ResizeLintConfiguration,
         root: URL
     ) throws -> BaselineDocument? {
-        let url = baselineURL(invocation, configuration: configuration, root: root)
+        let url = try baselineURL(invocation, configuration: configuration, root: root)
         if FileManager.default.fileExists(atPath: url.path) { return try BaselineStore.load(from: url) }
         if invocation.baseline != nil { throw CLIUserError.message("Baseline not found: \(relative(url, root: root))") }
         return nil
     }
 
-    private static func baselineURL(_ invocation: CLIInvocation, configuration: ResizeLintConfiguration, root: URL) -> URL {
-        resolve(invocation.baseline ?? configuration.baseline, relativeTo: root)
+    private static func baselineURL(
+        _ invocation: CLIInvocation,
+        configuration: ResizeLintConfiguration,
+        root: URL
+    ) throws -> URL {
+        try resolveInsideRoot(invocation.baseline ?? configuration.baseline, relativeTo: root)
     }
 
     private static func initialize(force: Bool, root: URL) throws -> CLIResult {
@@ -273,16 +291,70 @@ enum CLIApplication {
 
     private static func notices(_ result: AnalysisResult, verbose: Bool) -> String {
         let visible = result.notices.filter { verbose || $0.kind == .malformedSuppression || $0.kind == .unreadableFile }
-        return visible.map { "\($0.path): \($0.message)" }.joined(separator: "\n") + (visible.isEmpty ? "" : "\n")
+        return visible.map {
+            "\(TerminalEscaping.escape($0.path)): \(TerminalEscaping.escape($0.message))"
+        }.joined(separator: "\n") + (visible.isEmpty ? "" : "\n")
     }
 
     private static func invalid(_ error: Error) -> CLIResult {
-        CLIResult(exitCode: 2, standardOutput: "", standardError: "\(error)\n")
+        CLIResult(
+            exitCode: 2,
+            standardOutput: "",
+            standardError: TerminalEscaping.escape("\(error)") + "\n"
+        )
+    }
+
+    private static func operational(_ message: String) -> CLIResult {
+        CLIResult(
+            exitCode: 3,
+            standardOutput: "",
+            standardError: TerminalEscaping.escape(message) + "\n"
+        )
     }
 
     private static func resolve(_ path: String, relativeTo root: URL) -> URL {
         if path.hasPrefix("/") { return URL(filePath: path).standardizedFileURL }
         return root.appending(path: path).standardizedFileURL
+    }
+
+    private static func resolveInsideRoot(_ path: String, relativeTo root: URL) throws -> URL {
+        let canonicalRoot = root.standardizedFileURL.resolvingSymlinksInPath()
+        let candidate = resolve(path, relativeTo: root)
+        guard !containsSymbolicLink(candidate, stoppingAt: root.standardizedFileURL) else {
+            throw CLIUserError.message("Symbolic-link destinations are not allowed: \(path)")
+        }
+        let resolved = resolvingExistingAncestors(of: candidate)
+        let prefix = canonicalRoot.path.hasSuffix("/") ? canonicalRoot.path : canonicalRoot.path + "/"
+        guard resolved.path == canonicalRoot.path || resolved.path.hasPrefix(prefix) else {
+            throw CLIUserError.message("Path escapes the project root: \(path)")
+        }
+        return candidate
+    }
+
+    private static func containsSymbolicLink(_ url: URL, stoppingAt root: URL) -> Bool {
+        var current = url.standardizedFileURL
+        let stop = root.standardizedFileURL.path
+        while current.path != stop, current.path != "/" {
+            if (try? FileManager.default.destinationOfSymbolicLink(atPath: current.path)) != nil {
+                return true
+            }
+            current.deleteLastPathComponent()
+        }
+        return false
+    }
+
+    private static func resolvingExistingAncestors(of url: URL) -> URL {
+        var ancestor = url
+        var missingComponents: [String] = []
+        while !FileManager.default.fileExists(atPath: ancestor.path), ancestor.path != "/" {
+            missingComponents.append(ancestor.lastPathComponent)
+            ancestor.deleteLastPathComponent()
+        }
+        var resolved = ancestor.resolvingSymlinksInPath()
+        for component in missingComponents.reversed() {
+            resolved.append(path: component)
+        }
+        return resolved.standardizedFileURL
     }
 
     private static func relative(_ url: URL, root: URL) -> String {

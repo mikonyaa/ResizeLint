@@ -16,7 +16,7 @@ struct SuppressionIndex: Sendable {
         for (offset, line) in directiveLines.enumerated() {
             let lineNumber = offset + 1
             if let directive = Self.directive(in: line, name: "disable-next-line") {
-                if directive.reason.isEmpty {
+                if directive.reason.isEmpty || !Self.isKnownRule(directive.ruleID) {
                     notices.append(Self.malformed(path: path, line: lineNumber))
                 } else {
                     nextLineRules[lineNumber + 1, default: []].insert(directive.ruleID)
@@ -24,7 +24,7 @@ struct SuppressionIndex: Sendable {
                 continue
             }
             if let directive = Self.directive(in: line, name: "disable-file") {
-                if directive.reason.isEmpty || declarationSeen {
+                if directive.reason.isEmpty || declarationSeen || !Self.isKnownRule(directive.ruleID) {
                     notices.append(Self.malformed(path: path, line: lineNumber))
                 } else {
                     fileRules.insert(directive.ruleID)
@@ -57,6 +57,10 @@ struct SuppressionIndex: Sendable {
               let idRange = Range(match.range(at: 1), in: line),
               let reasonRange = Range(match.range(at: 2), in: line) else { return nil }
         return (String(line[idRange]), String(line[reasonRange]).trimmingCharacters(in: .whitespaces))
+    }
+
+    private static func isKnownRule(_ ruleID: String) -> Bool {
+        RuleCatalog.all.contains { $0.id == ruleID }
     }
 
     private static func malformed(path: String, line: Int) -> OperationalNotice {

@@ -36,6 +36,10 @@ public struct SourceDiscovery: Sendable {
             guard FileManager.default.fileExists(atPath: standardized.path) else {
                 throw DiscoveryError.missingPath(standardized.path)
             }
+            let resolved = standardized.resolvingSymlinksInPath()
+            guard Self.isWithinRoot(resolved, root: root) else {
+                throw DiscoveryError.pathOutsideRoot(standardized.path)
+            }
             let values = try standardized.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
             if values.isSymbolicLink == true { continue }
             if values.isDirectory == true {
@@ -76,8 +80,8 @@ public struct SourceDiscovery: Sendable {
 
     private func discoveredFile(_ url: URL, root: URL) throws -> DiscoveredSource? {
         let resolved = url.standardizedFileURL.resolvingSymlinksInPath()
+        guard Self.isWithinRoot(resolved, root: root) else { return nil }
         let rootPath = root.path.hasSuffix("/") ? root.path : root.path + "/"
-        guard resolved.path == root.path || resolved.path.hasPrefix(rootPath) else { return nil }
         let relative = String(resolved.path.dropFirst(rootPath.count)).replacingOccurrences(of: "\\", with: "/")
         if relative.split(separator: "/").contains(where: { excludedComponents.contains(String($0)) }) { return nil }
         let kind: SourceKind?
@@ -91,6 +95,11 @@ public struct SourceDiscovery: Sendable {
             kind = nil
         }
         return kind.map { DiscoveredSource(url: resolved, relativePath: relative, kind: $0) }
+    }
+
+    private static func isWithinRoot(_ url: URL, root: URL) -> Bool {
+        let rootPath = root.path.hasSuffix("/") ? root.path : root.path + "/"
+        return url.path == root.path || url.path.hasPrefix(rootPath)
     }
 }
 

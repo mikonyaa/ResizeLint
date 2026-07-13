@@ -1,4 +1,5 @@
 import Foundation
+import ResizeLintCore
 import Testing
 @testable import ResizeLintCLI
 
@@ -134,6 +135,80 @@ func outputFile() async throws {
 
     #expect(result.standardOutput.isEmpty)
     #expect(FileManager.default.fileExists(atPath: root.appending(path: "report.json").path))
+}
+
+@Test("Terminal errors neutralize control characters from arguments")
+func terminalErrorEscaping() async throws {
+    let result = try await ResizeLintCommand.runForTesting(arguments: ["--bad\u{1B}[31m\noption"])
+
+    #expect(result.exitCode == 2)
+    #expect(result.standardError.unicodeScalars.contains { $0.value == 0x1B } == false)
+    #expect(result.standardError.contains("--bad\\u{001B}[31m\\noption"))
+}
+
+@Test("Baseline writes cannot escape the project root")
+func baselineWriteCannotEscapeRoot() async throws {
+    let parent = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: parent) }
+    let root = parent.appending(path: "Project")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    try writeCLI("let bounds = UIScreen.main.bounds", to: root.appending(path: "View.swift"))
+    let escaped = parent.appending(path: "outside.json")
+
+    let result = try await ResizeLintCommand.runForTesting(
+        arguments: ["baseline", "create", ".", "--baseline", "../outside.json"],
+        currentDirectory: root
+    )
+
+    #expect(result.exitCode == 2)
+    #expect(FileManager.default.fileExists(atPath: escaped.path) == false)
+}
+
+@Test("Report writes cannot traverse a symlinked parent outside the project root")
+func reportWriteCannotEscapeThroughSymlink() async throws {
+    let parent = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: parent) }
+    let root = parent.appending(path: "Project")
+    let outside = parent.appending(path: "Outside")
+    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+    try FileManager.default.createSymbolicLink(at: root.appending(path: "Reports"), withDestinationURL: outside)
+    try writeCLI("let screen = UIScreen.main", to: root.appending(path: "View.swift"))
+
+    let result = try await ResizeLintCommand.runForTesting(
+        arguments: ["lint", ".", "--format", "json", "--output", "Reports/report.json"],
+        currentDirectory: root
+    )
+
+    #expect(result.exitCode == 2)
+    #expect(FileManager.default.fileExists(atPath: outside.appending(path: "report.json").path) == false)
+}
+
+@Test("Baseline check output neutralizes control characters from the document")
+func baselineCheckEscapesUntrustedPaths() async throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try writeCLI("let bounds = UIScreen.main.bounds", to: root.appending(path: "View.swift"))
+    let baseline: [String: Any] = [
+        "schemaVersion": 1,
+        "toolVersion": "1.0.0",
+        "findings": [[
+            "ruleID": "RL001",
+            "path": "Bad\u{1B}[31m\nInjected.swift",
+            "fingerprint": "sha256:stale",
+        ]],
+    ]
+    let data = try JSONSerialization.data(withJSONObject: baseline)
+    try data.write(to: root.appending(path: "baseline.json"))
+
+    let result = try await ResizeLintCommand.runForTesting(
+        arguments: ["baseline", "check", ".", "--baseline", "baseline.json"],
+        currentDirectory: root
+    )
+
+    #expect(result.exitCode == 1)
+    #expect(result.standardOutput.unicodeScalars.contains { $0.value == 0x1B } == false)
+    #expect(result.standardOutput.contains("Bad\\u{001B}[31m\\nInjected.swift"))
 }
 
 private func cliTemporaryDirectory() throws -> URL {

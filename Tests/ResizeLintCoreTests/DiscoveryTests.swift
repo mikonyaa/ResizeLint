@@ -35,6 +35,34 @@ func discoveryRejectsSymlinkEscape() throws {
     #expect(files.isEmpty)
 }
 
+@Test("An explicitly requested path outside the scan root is rejected")
+func discoveryRejectsExplicitOutsidePath() throws {
+    let root = try temporaryDirectory(named: "explicit-root")
+    let outside = try temporaryDirectory(named: "explicit-outside")
+    defer {
+        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.removeItem(at: outside)
+    }
+    let source = outside.appending(path: "Escaped.swift")
+    try write("let escaped = UIScreen.main.bounds", to: source)
+
+    #expect(throws: DiscoveryError.self) {
+        try SourceDiscovery().discover(paths: [source], scanRoot: root)
+    }
+}
+
+@Test("Duplicate input paths are analyzed only once")
+func duplicatePathsAreDeduplicated() throws {
+    let root = try temporaryDirectory(named: "duplicates")
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appending(path: "View.swift")
+    try write("let bounds = UIScreen.main.bounds", to: source)
+
+    let files = try SourceDiscovery().discover(paths: [source, source, root], scanRoot: root)
+
+    #expect(files.map(\.relativePath) == ["View.swift"])
+}
+
 @Test("Project scanner applies configured include and exclude globs")
 func scannerAppliesConfiguredGlobs() async throws {
     let root = try temporaryDirectory(named: "configured-globs")

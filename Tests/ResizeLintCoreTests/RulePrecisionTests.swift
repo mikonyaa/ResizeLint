@@ -96,6 +96,16 @@ func malformedSuppressionDoesNotHideFinding() async {
     #expect(result.notices.contains { $0.kind == .malformedSuppression })
 }
 
+@Test("Suppressions with unknown rule IDs are malformed")
+func unknownSuppressionRuleIsMalformed() async {
+    let result = await analyzeSwift("""
+    // resizelint:disable-next-line RL999 -- This rule does not exist.
+    let bounds = UIScreen.main.bounds
+    """)
+    #expect(result.diagnostics.contains { $0.ruleID == "RL001" && !$0.isSuppressed })
+    #expect(result.notices.contains { $0.kind == .malformedSuppression })
+}
+
 @Test("File suppressions after a declaration are malformed")
 func lateFileSuppressionDoesNotHideFinding() async {
     let result = await analyzeSwift("""

@@ -25,6 +25,10 @@ public enum ProjectScanner {
         for file in discovered {
             try Task.checkCancellation()
             do {
+                let values = try file.url.resourceValues(forKeys: [.fileSizeKey])
+                if let bytes = values.fileSize, bytes > maximumSourceBytes {
+                    throw ScanError.sourceTooLarge(path: file.relativePath, bytes: bytes)
+                }
                 let data = try Data(contentsOf: file.url, options: [.mappedIfSafe])
                 guard data.count <= maximumSourceBytes else {
                     throw ScanError.sourceTooLarge(path: file.relativePath, bytes: data.count)
@@ -44,6 +48,7 @@ public enum ProjectScanner {
             }
         }
         let analyzed = await ResizeAnalyzer().analyze(AnalysisRequest(files: inputs, configuration: configuration))
+        try Task.checkCancellation()
         return AnalysisResult(
             diagnostics: analyzed.diagnostics,
             notices: (notices + analyzed.notices).sorted { ($0.path, $0.message) < ($1.path, $1.message) },

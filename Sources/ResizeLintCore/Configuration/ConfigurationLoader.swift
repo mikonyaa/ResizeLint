@@ -21,6 +21,10 @@ public enum ConfigurationLoader {
     private static let maximumBytes = 1_048_576
 
     public static func load(at url: URL) throws -> ResizeLintConfiguration {
+        let values = try url.resourceValues(forKeys: [.fileSizeKey])
+        if let bytes = values.fileSize, bytes > maximumBytes {
+            throw ConfigurationError.fileTooLarge(bytes)
+        }
         let data = try Data(contentsOf: url, options: [.mappedIfSafe])
         guard data.count <= maximumBytes else { throw ConfigurationError.fileTooLarge(data.count) }
         guard let source = String(data: data, encoding: .utf8) else {
@@ -35,6 +39,9 @@ public enum ConfigurationLoader {
             try validateKeys(object)
             let wire = try YAMLDecoder().decode(ConfigurationWire.self, from: yaml)
             guard wire.version == 1 else { throw ConfigurationError.unsupportedVersion(wire.version) }
+            if let jobs = wire.jobs, jobs < 1 {
+                throw ConfigurationError.invalidYAML("jobs must be positive")
+            }
             return wire.configuration
         } catch let error as ConfigurationError {
             throw error
@@ -52,6 +59,7 @@ public enum ConfigurationLoader {
 
         if let rules = mapping["rules"] as? [String: Any] {
             for (ruleID, value) in rules {
+                try validateRuleID(ruleID, prefix: "rules")
                 try validateRule(value, prefix: "rules.\(ruleID)")
             }
         }
@@ -62,6 +70,7 @@ public enum ConfigurationLoader {
                 }
                 if let rules = override["rules"] as? [String: Any] {
                     for (ruleID, value) in rules {
+                        try validateRuleID(ruleID, prefix: "overrides[\(index)].rules")
                         try validateRule(value, prefix: "overrides[\(index)].rules.\(ruleID)")
                     }
                 }
@@ -75,6 +84,12 @@ public enum ConfigurationLoader {
         }
         for key in mapping.keys where !["enabled", "severity"].contains(key) {
             throw ConfigurationError.unknownKey("\(prefix).\(key)")
+        }
+    }
+
+    private static func validateRuleID(_ ruleID: String, prefix: String) throws {
+        guard RuleCatalog.all.contains(where: { $0.id == ruleID }) else {
+            throw ConfigurationError.unknownKey("\(prefix).\(ruleID)")
         }
     }
 }

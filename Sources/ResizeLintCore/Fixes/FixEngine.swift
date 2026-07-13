@@ -7,6 +7,7 @@ public enum FixError: Error, Equatable {
     case invalidRange
     case invalidUTF8
     case syntaxRegression
+    case unsafeDestination
 }
 
 public struct FixPreview: Equatable, Sendable {
@@ -49,6 +50,10 @@ public enum FixEngine {
         let updated = try apply(edits: edits, to: source)
         let parsed = Parser.parse(source: updated)
         guard ParseDiagnosticsGenerator.diagnostics(for: parsed).isEmpty else { throw FixError.syntaxRegression }
+        let values = try url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        guard values.isRegularFile == true, values.isSymbolicLink != true else {
+            throw FixError.unsafeDestination
+        }
         let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
         let permissions = attributes[.posixPermissions]
         let temporary = url.deletingLastPathComponent().appending(path: ".\(url.lastPathComponent).resizelint-\(UUID().uuidString)")

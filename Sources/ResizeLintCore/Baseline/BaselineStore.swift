@@ -36,6 +36,9 @@ public enum BaselineError: Error, Equatable {
     case alreadyExists
     case unsupportedSchema(Int)
     case duplicateEntry(BaselineEntry)
+    case invalidDocument
+    case fileTooLarge(Int)
+    case unsafeDestination
 }
 
 public struct BaselineIssue: Equatable, Sendable {
@@ -55,6 +58,8 @@ public struct BaselineIssue: Equatable, Sendable {
 }
 
 public enum BaselineStore {
+    private static let maximumBytes = 10 * 1_048_576
+
     public static func create(findings: [BaselineEntry], at url: URL, force: Bool) throws {
         if FileManager.default.fileExists(atPath: url.path), !force { throw BaselineError.alreadyExists }
         try write(BaselineDocument(findings: findings), to: url)
@@ -65,8 +70,17 @@ public enum BaselineStore {
     }
 
     public static func load(from url: URL) throws -> BaselineDocument {
-        let data = try Data(contentsOf: url)
-        let document = try JSONDecoder().decode(BaselineDocument.self, from: data)
+        let values = try url.resourceValues(forKeys: [.fileSizeKey])
+        if let bytes = values.fileSize, bytes > maximumBytes {
+            throw BaselineError.fileTooLarge(bytes)
+        }
+        let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let document: BaselineDocument
+        do {
+            document = try JSONDecoder().decode(BaselineDocument.self, from: data)
+        } catch {
+            throw BaselineError.invalidDocument
+        }
         guard document.schemaVersion == 1 else { throw BaselineError.unsupportedSchema(document.schemaVersion) }
         return document
     }
@@ -99,11 +113,22 @@ public enum BaselineStore {
     }
 
     private static func isUnsafe(_ path: String) -> Bool {
-        path.hasPrefix("/") || path.split(separator: "/").contains("..")
+        path.hasPrefix("/")
+            || path.split(separator: "/").contains("..")
+            || path.unicodeScalars.contains { $0.value < 0x20 || (0x7F...0x9F).contains($0.value) }
     }
 
     private static func write(_ document: BaselineDocument, to url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if (try? FileManager.default.destinationOfSymbolicLink(atPath: url.path)) != nil {
+            throw BaselineError.unsafeDestination
+        }
+        if FileManager.default.fileExists(atPath: url.path) {
+            let values = try url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+            guard values.isRegularFile == true, values.isSymbolicLink != true else {
+                throw BaselineError.unsafeDestination
+            }
+        }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         var data = try encoder.encode(document)

@@ -55,3 +55,10 @@ func strictModeUsesWarningThreshold() {
 
     #expect(merged.failOn == .warning)
 }
+
+@Test("Configuration jobs must be positive")
+func configurationJobsMustBePositive() {
+    #expect(throws: ConfigurationError.self) {
+        try ConfigurationLoader.decode("version: 1\njobs: 0\n")
+    }
+}
