@@ -1,0 +1,22 @@
+included:
+  - Sources
+  - Tests/ResizeLintCoreTests
+  - Tests/ResizeLintCLITests
+
+excluded:
+  - .build
+  - Tests/Fixtures
+
+only_rules:
+  - empty_count
+  - empty_string
+  - force_cast
+  - force_try
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - overridden_super_call
+  - unowned_variable_capture
+  - unused_closure_parameter
+  - unused_import
+
+reporter: xcode
