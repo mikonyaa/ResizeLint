@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title description">
+  <title id="title">ResizeLint logo</title>
+  <desc id="description">Two adaptive window frames aligned by diagnostic corner marks.</desc>
+  <defs>
+    <linearGradient id="signal" x1="28" y1="24" x2="164" y2="168" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#52A7FF"/>
+      <stop offset="1" stop-color="#8CF3D1"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="30" width="144" height="132" rx="30" fill="#0C1017"/>
+  <rect x="47" y="51" width="98" height="90" rx="20" fill="none" stroke="url(#signal)" stroke-width="8"/>
+  <path d="M47 82V71c0-11 9-20 20-20h12M145 110v11c0 11-9 20-20 20h-12" fill="none" stroke="#F5F7FA" stroke-linecap="round" stroke-width="5" opacity=".92"/>
+  <path d="M34 58V40c0-3 3-6 6-6h18M134 158h18c3 0 6-3 6-6v-18" fill="none" stroke="url(#signal)" stroke-linecap="round" stroke-width="6"/>
+  <circle cx="145" cy="51" r="5" fill="#FFB86C"/>
+</svg>

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mikonyaa/ResizeLint/blob/v1/Schemas/resizelint-report-v1.schema.json",
+  "title": "ResizeLint JSON report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "toolVersion", "invocation", "summary", "diagnostics", "fixes", "timing"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "toolVersion": { "type": "string" },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "paths"],
+      "properties": {
+        "command": { "type": "string" },
+        "paths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["errors", "warnings", "info", "filesAnalyzed"],
+      "properties": {
+        "errors": { "type": "integer", "minimum": 0 },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "info": { "type": "integer", "minimum": 0 },
+        "filesAnalyzed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "diagnostics": { "type": "array", "items": { "$ref": "#/$defs/diagnostic" } },
+    "fixes": { "type": "array", "items": { "$ref": "#/$defs/fix" } },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["durationSeconds"],
+      "properties": { "durationSeconds": { "type": "number", "minimum": 0 } }
+    }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "column"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "utf8Offset", "utf8Length"],
+      "properties": {
+        "start": { "$ref": "#/$defs/location" },
+        "end": { "$ref": "#/$defs/location" },
+        "utf8Offset": { "type": "integer", "minimum": 0 },
+        "utf8Length": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "fix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "utf8Offset", "utf8Length", "replacement"],
+      "properties": {
+        "path": { "type": "string" },
+        "utf8Offset": { "type": "integer", "minimum": 0 },
+        "utf8Length": { "type": "integer", "minimum": 0 },
+        "replacement": { "type": "string" }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleID", "ruleName", "severity", "message", "path", "range", "helpURI", "fingerprint", "isSuppressed", "baselineState"],
+      "properties": {
+        "ruleID": { "type": "string", "pattern": "^RL00[1-9]$" },
+        "ruleName": { "type": "string" },
+        "severity": { "enum": ["error", "warning", "info"] },
+        "message": { "type": "string" },
+        "path": { "type": "string" },
+        "range": { "$ref": "#/$defs/range" },
+        "helpURI": { "type": "string" },
+        "fix": { "$ref": "#/$defs/fix" },
+        "fingerprint": { "type": "string", "pattern": "^sha256:" },
+        "isSuppressed": { "type": "boolean" },
+        "baselineState": { "enum": ["new", "unchanged", "absent"] }
+      }
+    }
+  }
+}

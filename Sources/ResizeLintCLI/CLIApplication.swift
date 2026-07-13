@@ -67,7 +67,7 @@ enum CLIApplication {
             case let .initialize(force):
                 return try initialize(force: force, root: currentDirectory)
             case .lint, .fix, .baselineCreate, .baselineUpdate, .baselineCheck:
-                return try await runProject(invocation, root: currentDirectory)
+                return try await runProject(invocation, currentDirectory: currentDirectory)
             }
         } catch let error as ConfigurationError {
             return invalid(error)
@@ -86,10 +86,11 @@ enum CLIApplication {
         }
     }
 
-    private static func runProject(_ invocation: CLIInvocation, root: URL) async throws -> CLIResult {
-        let configuration = try loadConfiguration(invocation, root: root)
+    private static func runProject(_ invocation: CLIInvocation, currentDirectory: URL) async throws -> CLIResult {
+        let root = projectRoot(from: currentDirectory)
+        let configuration = try loadConfiguration(invocation, root: root, currentDirectory: currentDirectory)
         let pathStrings = invocation.paths.isEmpty ? ["."] : invocation.paths
-        let urls = pathStrings.map { resolve($0, relativeTo: root) }
+        let urls = pathStrings.map { resolve($0, relativeTo: currentDirectory) }
         let start = ContinuousClock.now
         var result = try await ProjectScanner.scan(paths: urls, root: root, configuration: configuration)
         let elapsed = start.duration(to: .now)
@@ -130,6 +131,7 @@ enum CLIApplication {
                 invocation: invocation,
                 configuration: configuration,
                 root: root,
+                outputBase: currentDirectory,
                 urls: urls,
                 paths: pathStrings,
                 duration: duration
@@ -143,6 +145,7 @@ enum CLIApplication {
                 invocation: invocation,
                 configuration: configuration,
                 root: root,
+                outputBase: currentDirectory,
                 command: "lint",
                 paths: pathStrings,
                 duration: duration
@@ -158,6 +161,7 @@ enum CLIApplication {
         invocation: CLIInvocation,
         configuration: ResizeLintConfiguration,
         root: URL,
+        outputBase: URL,
         urls: [URL],
         paths: [String],
         duration: Double
@@ -166,7 +170,7 @@ enum CLIApplication {
         var diffs = ""
         for path in editsByPath.keys.sorted() {
             guard let edits = editsByPath[path] else { continue }
-            let url = try resolveInsideRoot(path, relativeTo: root)
+            let url = try resolveInsideRoot(path, relativeTo: root, root: root)
             let source = try String(contentsOf: url, encoding: .utf8)
             if dryRun {
                 diffs += try FixEngine.preview(source: source, edits: edits, path: path).unifiedDiff
@@ -186,6 +190,7 @@ enum CLIApplication {
             invocation: invocation,
             configuration: configuration,
             root: root,
+            outputBase: outputBase,
             command: "fix",
             paths: paths,
             duration: duration
@@ -197,6 +202,7 @@ enum CLIApplication {
         invocation: CLIInvocation,
         configuration: ResizeLintConfiguration,
         root: URL,
+        outputBase: URL,
         command: String,
         paths: [String],
         duration: Double
@@ -210,7 +216,7 @@ enum CLIApplication {
         )
         var standardOutput = invocation.quiet ? "" : output
         if let path = invocation.output {
-            let url = try resolveInsideRoot(path, relativeTo: root)
+            let url = try resolveInsideRoot(path, relativeTo: outputBase, root: root)
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try Data(output.utf8).write(to: url, options: .atomic)
             standardOutput = ""
@@ -223,20 +229,26 @@ enum CLIApplication {
         )
     }
 
-    private static func loadConfiguration(_ invocation: CLIInvocation, root: URL) throws -> ResizeLintConfiguration {
+    private static func loadConfiguration(
+        _ invocation: CLIInvocation,
+        root: URL,
+        currentDirectory: URL
+    ) throws -> ResizeLintConfiguration {
         let repositoryURL = root.appending(path: ".resizelint.yml")
-        let repository: ResizeLintConfiguration?
+        let cli = ConfigurationOverrides(failOn: invocation.failOn, strict: invocation.strict, jobs: invocation.jobs)
         if let explicit = invocation.config {
-            repository = try ConfigurationLoader.load(at: resolve(explicit, relativeTo: root))
-        } else if FileManager.default.fileExists(atPath: repositoryURL.path) {
-            repository = try ConfigurationLoader.load(at: repositoryURL)
-        } else {
-            repository = nil
+            let url = try resolveInsideRoot(explicit, relativeTo: currentDirectory, root: root)
+            return ResizeLintConfiguration.resolve(
+                repository: try ConfigurationLoader.load(at: url),
+                nearest: nil,
+                cli: cli
+            )
         }
-        return ResizeLintConfiguration.resolve(
-            repository: repository,
-            nearest: nil,
-            cli: ConfigurationOverrides(failOn: invocation.failOn, strict: invocation.strict, jobs: invocation.jobs)
+        let repository = FileManager.default.fileExists(atPath: repositoryURL.path) ? repositoryURL : nil
+        return try ConfigurationLoader.resolve(
+            repositoryAt: repository,
+            nearestAt: nearestConfiguration(from: currentDirectory, stoppingAt: root),
+            cli: cli
         )
     }
 
@@ -256,7 +268,7 @@ enum CLIApplication {
         configuration: ResizeLintConfiguration,
         root: URL
     ) throws -> URL {
-        try resolveInsideRoot(invocation.baseline ?? configuration.baseline, relativeTo: root)
+        try resolveInsideRoot(invocation.baseline ?? configuration.baseline, relativeTo: root, root: root)
     }
 
     private static func initialize(force: Bool, root: URL) throws -> CLIResult {
@@ -317,9 +329,9 @@ enum CLIApplication {
         return root.appending(path: path).standardizedFileURL
     }
 
-    private static func resolveInsideRoot(_ path: String, relativeTo root: URL) throws -> URL {
+    private static func resolveInsideRoot(_ path: String, relativeTo base: URL, root: URL) throws -> URL {
         let canonicalRoot = root.standardizedFileURL.resolvingSymlinksInPath()
-        let candidate = resolve(path, relativeTo: root)
+        let candidate = resolve(path, relativeTo: base)
         guard !containsSymbolicLink(candidate, stoppingAt: root.standardizedFileURL) else {
             throw CLIUserError.message("Symbolic-link destinations are not allowed: \(path)")
         }
@@ -329,6 +341,35 @@ enum CLIApplication {
             throw CLIUserError.message("Path escapes the project root: \(path)")
         }
         return candidate
+    }
+
+    private static func projectRoot(from currentDirectory: URL) -> URL {
+        let original = currentDirectory.standardizedFileURL.resolvingSymlinksInPath()
+        var candidate = original
+        while true {
+            if FileManager.default.fileExists(atPath: candidate.appending(path: ".git").path) {
+                return candidate
+            }
+            if candidate.path == "/" { return original }
+            let parent = candidate.deletingLastPathComponent()
+            if parent.path == candidate.path { return original }
+            candidate = parent
+        }
+    }
+
+    private static func nearestConfiguration(from currentDirectory: URL, stoppingAt root: URL) -> URL? {
+        var candidate = currentDirectory.standardizedFileURL.resolvingSymlinksInPath()
+        let canonicalRoot = root.standardizedFileURL.resolvingSymlinksInPath()
+        while candidate.path != canonicalRoot.path {
+            let configuration = candidate.appending(path: ".resizelint.yml")
+            if FileManager.default.fileExists(atPath: configuration.path) {
+                return configuration
+            }
+            let parent = candidate.deletingLastPathComponent()
+            if parent.path == candidate.path { return nil }
+            candidate = parent
+        }
+        return nil
     }
 
     private static func containsSymbolicLink(_ url: URL, stoppingAt root: URL) -> Bool {

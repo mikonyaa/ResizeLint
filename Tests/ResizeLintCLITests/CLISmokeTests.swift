@@ -211,6 +211,30 @@ func baselineCheckEscapesUntrustedPaths() async throws {
     #expect(result.standardOutput.contains("Bad\\u{001B}[31m\\nInjected.swift"))
 }
 
+@Test("Nested invocation discovers the repository root and nearest configuration")
+func nestedInvocationUsesRepositoryRootAndNearestConfiguration() async throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    try FileManager.default.createDirectory(at: root.appending(path: ".git"), withIntermediateDirectories: true)
+    let feature = root.appending(path: "Features/Gallery")
+    try FileManager.default.createDirectory(at: feature, withIntermediateDirectories: true)
+    try writeCLI("version: 1\nfail_on: info\njobs: 2\n", to: root.appending(path: ".resizelint.yml"))
+    try writeCLI(
+        "version: 1\nrules:\n  RL003:\n    severity: error\n",
+        to: feature.appending(path: ".resizelint.yml")
+    )
+    try writeCLI("let screen = UIScreen.main", to: feature.appending(path: "View.swift"))
+
+    let result = try await ResizeLintCommand.runForTesting(
+        arguments: ["lint", ".", "--format", "xcode"],
+        currentDirectory: feature
+    )
+
+    #expect(result.exitCode == 1)
+    #expect(result.standardOutput.contains("Features/Gallery/View.swift"))
+    #expect(result.standardOutput.contains("error: [RL003]"))
+}
+
 private func cliTemporaryDirectory() throws -> URL {
     let url = FileManager.default.temporaryDirectory.appending(path: "resizelint-cli-\(UUID().uuidString)")
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)

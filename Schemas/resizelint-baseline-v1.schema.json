@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mikonyaa/ResizeLint/blob/v1/Schemas/resizelint-baseline-v1.schema.json",
+  "title": "ResizeLint baseline v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "toolVersion", "findings"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "toolVersion": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ruleID", "path", "fingerprint"],
+        "properties": {
+          "ruleID": { "type": "string", "pattern": "^RL00[1-9]$" },
+          "path": { "type": "string" },
+          "fingerprint": { "type": "string", "pattern": "^sha256:" }
+        }
+      }
+    }
+  }
+}

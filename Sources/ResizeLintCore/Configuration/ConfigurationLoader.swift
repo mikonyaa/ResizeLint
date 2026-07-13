@@ -21,6 +21,25 @@ public enum ConfigurationLoader {
     private static let maximumBytes = 1_048_576
 
     public static func load(at url: URL) throws -> ResizeLintConfiguration {
+        try decode(try source(at: url))
+    }
+
+    public static func resolve(
+        repositoryAt repositoryURL: URL?,
+        nearestAt nearestURL: URL?,
+        cli: ConfigurationOverrides
+    ) throws -> ResizeLintConfiguration {
+        var result = ResizeLintConfiguration()
+        if let repositoryURL {
+            result = try decodeWire(try source(at: repositoryURL)).applying(to: result)
+        }
+        if let nearestURL {
+            result = try decodeWire(try source(at: nearestURL)).applying(to: result)
+        }
+        return ResizeLintConfiguration.resolve(repository: result, nearest: nil, cli: cli)
+    }
+
+    private static func source(at url: URL) throws -> String {
         let values = try url.resourceValues(forKeys: [.fileSizeKey])
         if let bytes = values.fileSize, bytes > maximumBytes {
             throw ConfigurationError.fileTooLarge(bytes)
@@ -30,10 +49,14 @@ public enum ConfigurationLoader {
         guard let source = String(data: data, encoding: .utf8) else {
             throw ConfigurationError.invalidYAML("Configuration is not UTF-8")
         }
-        return try decode(source)
+        return source
     }
 
     public static func decode(_ yaml: String) throws -> ResizeLintConfiguration {
+        try decodeWire(yaml).configuration
+    }
+
+    private static func decodeWire(_ yaml: String) throws -> ConfigurationWire {
         do {
             let object = try Yams.load(yaml: yaml)
             try validateKeys(object)
@@ -42,7 +65,7 @@ public enum ConfigurationLoader {
             if let jobs = wire.jobs, jobs < 1 {
                 throw ConfigurationError.invalidYAML("jobs must be positive")
             }
-            return wire.configuration
+            return wire
         } catch let error as ConfigurationError {
             throw error
         } catch {
@@ -110,16 +133,23 @@ private struct ConfigurationWire: Decodable {
     }
 
     var configuration: ResizeLintConfiguration {
-        let defaults = ResizeLintConfiguration()
+        applying(to: ResizeLintConfiguration())
+    }
+
+    func applying(to base: ResizeLintConfiguration) -> ResizeLintConfiguration {
+        var mergedRules = base.rules
+        for (ruleID, configuration) in rules ?? [:] {
+            mergedRules[ruleID] = mergedRules[ruleID]?.merging(configuration) ?? configuration
+        }
         return ResizeLintConfiguration(
             version: version,
-            include: include ?? defaults.include,
-            exclude: exclude ?? defaults.exclude,
-            baseline: baseline ?? defaults.baseline,
-            failOn: failOn ?? defaults.failOn,
-            rules: rules ?? [:],
-            overrides: overrides ?? [],
-            jobs: jobs ?? defaults.jobs
+            include: include ?? base.include,
+            exclude: exclude ?? base.exclude,
+            baseline: baseline ?? base.baseline,
+            failOn: failOn ?? base.failOn,
+            rules: mergedRules,
+            overrides: base.overrides + (overrides ?? []),
+            jobs: jobs ?? base.jobs
         )
     }
 }
