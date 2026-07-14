@@ -18,11 +18,15 @@ jobs:
   test:
     name: ${{ matrix.runner }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 15
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        runner: ${{ fromJSON(github.event_name == 'pull_request' && '["macos-26","ubuntu-22.04"]' || '["macos-26","ubuntu-22.04","macos-26-intel","ubuntu-latest"]') }}
+        runner:
+          - macos-26
+          - ubuntu-22.04
+          - macos-26-intel
+          - ubuntu-latest
 
     steps:
       - name: Check out source

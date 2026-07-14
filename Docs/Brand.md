@@ -1,31 +1,33 @@
-# Measured Flex
+# Brand system
 
-Measured Flex treats space as evidence. Frames expand, contract, and overlap
-without losing their internal order; the empty areas between them carry as much
-meaning as the forms themselves. Every interval is calibrated, every alignment
-meticulously crafted, and every visual relationship feels intentionally tested
-rather than merely arranged.
+ResizeLint uses a restrained identity named **Precision Signal**. Its mark is a
+single continuous line shaped into an adaptive `R`: the upper loop suggests a
+container changing size, while the lower loop keeps the form stable and
+recognizable. The production mark has no colored interruption. It must remain
+one coherent silhouette in monochrome and stay legible at small sizes.
 
-Color behaves like a diagnostic signal within a quiet material field. Deep ink
-and mineral gray establish concentration, while precise blue and mint accents
-identify change, confidence, and resolution. The palette is restrained enough
-to make each chromatic event consequential, with painstaking attention paid to
-contrast and the rhythm of repetition.
+Deep navy (`#050A14`) and warm ivory (`#F6F1E6`) carry the core identity. Blue,
+mint, and coral are diagnostic colors, reserved for rule IDs, success states,
+and errors inside product output. They do not appear inside the logo. This
+separation keeps the mark calm while allowing terminal and report surfaces to
+communicate status immediately.
 
-Scale communicates adaptation. Large rounded structures establish a calm
-container; smaller frames, corner marks, and measured rules create a patient
-sequence of observations. The composition should feel like the product of deep
-expertise: dense where comparison matters, generous where understanding needs
-room, and never decorative without purpose.
+Typography is direct and functional. Product names and headlines use a clean
+system grotesk; commands, paths, rule IDs, and measurements use the platform
+monospaced stack. Supporting text stays sparse, with enough space for the mark
+and diagnostic evidence to remain the dominant elements.
 
-Typography enters as an instrument, not a narrator. A clean grotesk provides
-the primary voice, while a disciplined monospaced face carries identifiers and
-measurements. Words remain sparse and exact, integrated into the geometry with
-master-level execution so the visual system communicates before the text is
-read.
+## Assets
 
-Balance comes from controlled asymmetry. One area may hold a concentrated
-cluster of evidence while another remains nearly silent, yet the whole stays
-stable through shared baselines and repeated radii. The final work must reward
-close inspection: refined through countless small decisions, visibly labored
-over with care, and resolved with the confidence of top-tier craftsmanship.
+- `resizelint-mark.svg` is the canonical transparent vector mark.
+- `resizelint-mark.png` is the 512-pixel raster fallback.
+- `resizelint-logo.svg` is the canonical horizontal hero lockup.
+- `resizelint-logo.png` is the high-resolution raster fallback.
+- `terminal-demo.svg` and `terminal-demo.png` show real human-format output on
+  a full dark canvas with no white surround.
+- `social-preview.svg` and `social-preview.png` are the 1280×640 repository
+  preview assets.
+
+Do not add an app-tile container, colored cut, glow, 3D effect, Apple logo, or
+endorsement language to the mark. Preserve generous clear space and use the
+provided assets rather than redrawing the geometry.

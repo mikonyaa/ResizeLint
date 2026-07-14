@@ -1,15 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title description">
-  <title id="title">ResizeLint logo</title>
-  <desc id="description">Two adaptive window frames aligned by diagnostic corner marks.</desc>
-  <defs>
-    <linearGradient id="signal" x1="28" y1="24" x2="164" y2="168" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#52A7FF"/>
-      <stop offset="1" stop-color="#8CF3D1"/>
-    </linearGradient>
-  </defs>
-  <rect x="24" y="30" width="144" height="132" rx="30" fill="#0C1017"/>
-  <rect x="47" y="51" width="98" height="90" rx="20" fill="none" stroke="url(#signal)" stroke-width="8"/>
-  <path d="M47 82V71c0-11 9-20 20-20h12M145 110v11c0 11-9 20-20 20h-12" fill="none" stroke="#F5F7FA" stroke-linecap="round" stroke-width="5" opacity=".92"/>
-  <path d="M34 58V40c0-3 3-6 6-6h18M134 158h18c3 0 6-3 6-6v-18" fill="none" stroke="url(#signal)" stroke-linecap="round" stroke-width="6"/>
-  <circle cx="145" cy="51" r="5" fill="#FFB86C"/>
+  <title id="title">ResizeLint mark</title>
+  <desc id="description">A continuous precision line forms an adaptive R-shaped loop.</desc>
+  <g fill="none" stroke="#0A1220" stroke-linecap="round" stroke-linejoin="round" stroke-width="17">
+    <path d="M49 157V69c0-25 18-41 44-41h37c30 0 50 18 50 45 0 25-19 43-45 43h-17l55 49"/>
+    <path d="M50 104l55 57H65c-20 0-33-13-33-33v-16c0-9 7-16 16-16"/>
+  </g>
 </svg>
