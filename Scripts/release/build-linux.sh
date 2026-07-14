@@ -39,11 +39,13 @@ install -m 0755 "$binary" "$staging/resizelint"
 touch -t 200001010000 "$staging/resizelint"
 
 archive="$destination/ResizeLint-$version-linux-x86_64.tar.gz"
+tar_options=(--no-acls --no-xattrs)
+if tar --version 2>/dev/null | grep -q 'bsdtar'; then
+  tar_options+=(--no-fflags --no-mac-metadata)
+fi
+
 COPYFILE_DISABLE=1 tar -czf "$archive" \
-  --no-acls \
-  --no-fflags \
-  --no-mac-metadata \
-  --no-xattrs \
+  "${tar_options[@]}" \
   -C "$staging" \
   resizelint
 

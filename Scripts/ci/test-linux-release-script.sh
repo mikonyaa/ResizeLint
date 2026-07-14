@@ -54,7 +54,31 @@ chmod 0755 "$binary"
 EOF
 chmod 0755 "$fake_bin/docker"
 
-PATH="$fake_bin:$PATH" \
+real_tar=$(command -v tar)
+cat > "$fake_bin/tar" <<'EOF'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "${1:-}" == "--version" ]]; then
+  echo "tar (GNU tar) 1.34"
+  exit 0
+fi
+
+for argument in "$@"; do
+  case "$argument" in
+    --no-fflags|--no-mac-metadata)
+      echo "tar: unrecognized option '$argument'" >&2
+      exit 64
+      ;;
+  esac
+done
+
+exec "$REAL_TAR" "$@"
+EOF
+chmod 0755 "$fake_bin/tar"
+
+REAL_TAR="$real_tar" PATH="$fake_bin:$PATH" \
   "$repository_root/Scripts/release/build-linux.sh" "$destination" 1.0.0 >/dev/null
 
 archive="$destination/ResizeLint-1.0.0-linux-x86_64.tar.gz"
