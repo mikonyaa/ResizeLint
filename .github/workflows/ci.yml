@@ -61,6 +61,9 @@ jobs:
       - name: Test composite Action consumer
         run: Scripts/ci/test-action-consumer.sh .build/release/resizelint
 
+      - name: Test Linux release packaging
+        run: Scripts/ci/test-linux-release-script.sh
+
       - name: Validate machine contracts
         run: Scripts/ci/validate-machine-contracts.py
 
