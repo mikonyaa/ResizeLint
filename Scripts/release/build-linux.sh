@@ -19,6 +19,7 @@ chmod 0777 "$scratch"
 
 docker run --rm \
   --platform linux/amd64 \
+  --user "$(id -u):$(id -g)" \
   --volume "$repository_root:/workspace:ro" \
   --volume "$scratch:/build" \
   --workdir /workspace \
