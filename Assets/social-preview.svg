@@ -36,7 +36,7 @@
     <text x="350" y="535" fill="#8D99AB">NO SOURCE UPLOAD</text>
   </g>
 
-  <g transform="translate(811 105) scale(1.76)" fill="none" stroke="#F6F1E6" stroke-linecap="round" stroke-linejoin="round" stroke-width="17">
+  <g transform="translate(810.5294118 105) scale(1.764705882)" fill="none" stroke="#F6F1E6" stroke-linecap="round" stroke-linejoin="round" stroke-width="17">
     <path d="M49 157V69c0-25 18-41 44-41h37c30 0 50 18 50 45 0 25-19 43-45 43h-17l55 49"/>
     <path d="M50 104l55 57H65c-20 0-33-13-33-33v-16c0-9 7-16 16-16"/>
   </g>
