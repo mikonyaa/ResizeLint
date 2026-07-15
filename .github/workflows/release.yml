@@ -103,13 +103,9 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain"
           security list-keychains -d user -s "$keychain"
 
-          application_identity=$(security find-identity -v -p codesigning "$keychain" \
-            | awk -v team="$TEAM_ID" 'index($0, "Developer ID Application:") && index($0, "(" team ")") { print $2; exit }')
-          security find-certificate -a -c "Developer ID Installer" -p "$keychain" \
-            | openssl x509 -inform pem -noout -subject \
-            | grep -q "$TEAM_ID"
-          installer_identity=$(security find-certificate -a -c "Developer ID Installer" -Z "$keychain" \
-            | awk '/SHA-1 hash:/ { print $3; exit }')
+          identity_output=$(Scripts/release/resolve-signing-identities.sh "$keychain" "$TEAM_ID")
+          application_identity=$(sed -n '1p' <<<"$identity_output")
+          installer_identity=$(sed -n '2p' <<<"$identity_output")
           test -n "$application_identity"
           test -n "$installer_identity"
 
