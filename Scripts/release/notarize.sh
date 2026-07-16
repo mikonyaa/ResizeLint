@@ -3,7 +3,7 @@
 set -euo pipefail
 
 artifact=${1:-}
-profile=${RESIZELINT_NOTARY_PROFILE:-ResizeLintNotary-9K594G5QQ8}
+profile=${RESIZELINT_NOTARY_PROFILE:-ResizeLintNotary-4NGTWD262W}
 
 if [[ -z "$artifact" || ! -f "$artifact" ]]; then
   echo "Usage: $0 <signed-zip-or-package>" >&2

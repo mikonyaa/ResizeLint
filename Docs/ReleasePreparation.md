@@ -23,8 +23,9 @@ issue, chat, commit, or workflow log:
 - `RESIZELINT_TEAM_ID`
 
 The certificate and private-key values are base64-encoded files. The Team ID is
-validated against `9K594G5QQ8`. Credentials are imported into an ephemeral
-keychain and removed even when the workflow fails.
+validated against the Developer ID distribution team `4NGTWD262W`. Credentials
+are imported into an ephemeral keychain and removed even when the workflow
+fails.
 
 ## Release behavior
 
@@ -49,6 +50,6 @@ Run the non-mutating readiness check before a release:
 Scripts/release/verify-signing-readiness.sh
 ```
 
-It requires both Developer ID certificate types for Team `9K594G5QQ8` and an
+It requires both Developer ID certificate types for Team `4NGTWD262W` and an
 available `notarytool`. Missing identities block signing and notarization, but
 do not invalidate unsigned local engineering verification.

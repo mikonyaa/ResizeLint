@@ -2,19 +2,19 @@
 
 set -euo pipefail
 
-team_id=9K594G5QQ8
+team_id=4NGTWD262W
 application_ready=0
 installer_ready=0
 tool_ready=0
 
-if security find-identity -v -p codesigning 2>/dev/null \
-  | grep -E -q "Developer ID Application:.*\\($team_id\\)"; then
+application_listing=$(security find-identity -v -p codesigning 2>/dev/null || true)
+if grep -E -q "Developer ID Application:.*\\($team_id\\)" <<<"$application_listing"; then
   application_ready=1
 fi
 
-if security find-certificate -a -c "Developer ID Installer" 2>/dev/null \
-  | openssl x509 -inform pem -noout -subject 2>/dev/null \
-  | grep -q "$team_id"; then
+installer_pem=$(security find-certificate -a -c "Developer ID Installer" -p 2>/dev/null || true)
+installer_subject=$(openssl x509 -inform pem -noout -subject <<<"$installer_pem" 2>/dev/null || true)
+if [[ "$installer_subject" == *"$team_id"* ]]; then
   installer_ready=1
 fi
 

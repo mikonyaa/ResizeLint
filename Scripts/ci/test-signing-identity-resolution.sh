@@ -21,25 +21,28 @@ case "${1:-}" in
     awk 'BEGIN { for (i = 0; i < 20000; i++) print "identity detail " i }'
     ;;
   find-certificate)
+    output_mode=default
     for argument in "$@"; do
       case "$argument" in
         -p)
-          printf '%s\n' \
-            '-----BEGIN CERTIFICATE-----' \
-            'ZmFrZQ==' \
-            '-----END CERTIFICATE-----'
-          exit 0
+          output_mode=pem
           ;;
         -Z)
-          printf '%s\n' \
-            'SHA-256 hash: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB' \
-            'SHA-1 hash: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC'
-          awk 'BEGIN { for (i = 0; i < 20000; i++) print "certificate detail " i }'
-          exit 0
+          output_mode=hash
           ;;
       esac
     done
-    exit 64
+    if [[ "$output_mode" == hash ]]; then
+      printf '%s\n' \
+        'SHA-256 hash: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB' \
+        'SHA-1 hash: CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC'
+      awk 'BEGIN { for (i = 0; i < 20000; i++) print "certificate detail " i }'
+    else
+      printf '%s\n' \
+        '-----BEGIN CERTIFICATE-----' \
+        'ZmFrZQ==' \
+        '-----END CERTIFICATE-----'
+    fi
     ;;
   *)
     exit 65
@@ -57,8 +60,16 @@ printf 'subject=CN = Developer ID Installer: Example (%s), OU = %s\n' "$FAKE_TEA
 EOF
 chmod 0755 "$fake_bin/openssl"
 
+cat > "$fake_bin/xcrun" <<'EOF'
+#!/usr/bin/env bash
+
+set -euo pipefail
+[[ "${1:-}" == notarytool && "${2:-}" == --help ]]
+EOF
+chmod 0755 "$fake_bin/xcrun"
+
 resolver="$repository_root/Scripts/release/resolve-signing-identities.sh"
-team_id=9K594G5QQ8
+team_id=4NGTWD262W
 output=$(FAKE_TEAM_ID="$team_id" PATH="$fake_bin:$PATH" "$resolver" test.keychain "$team_id")
 
 test "$(printf '%s\n' "$output" | sed -n '1p')" = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -71,5 +82,17 @@ if FAKE_TEAM_ID="$team_id" FAKE_APPLICATION_TEAM_ID=WRONGTEAM PATH="$fake_bin:$P
   exit 1
 fi
 grep -q "does not belong to team WRONGTEAM" "$temporary_root/wrong-team.err"
+
+distribution_team_id=4NGTWD262W
+if ! readiness_output=$(
+  FAKE_TEAM_ID="$distribution_team_id" PATH="$fake_bin:$PATH" \
+    "$repository_root/Scripts/release/verify-signing-readiness.sh"
+); then
+  echo "Signing readiness rejected distribution team $distribution_team_id" >&2
+  exit 1
+fi
+grep -q "Developer ID Application ($distribution_team_id): ready" <<<"$readiness_output"
+grep -q "Developer ID Installer ($distribution_team_id): ready" <<<"$readiness_output"
+grep -q "notarytool: available" <<<"$readiness_output"
 
 echo "Signing identity resolution test passed."
