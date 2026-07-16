@@ -68,6 +68,8 @@ jobs:
         run: Scripts/ci/test-signing-identity-resolution.sh
 
       - name: Test source release archive
+        env:
+          RESIZELINT_VERIFY_FORMULA_CHECKSUM: ${{ matrix.runner == 'macos-26' && '1' || '0' }}
         run: Scripts/release/test-source-archive.sh
 
       - name: Validate machine contracts

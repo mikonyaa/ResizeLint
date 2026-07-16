@@ -36,14 +36,16 @@ if [[ "$first_hash" != "$second_hash" ]]; then
   exit 1
 fi
 
-formula_hash=$(awk '/^[[:space:]]*sha256 / { gsub(/"/, "", $2); print $2; exit }' "$formula")
-if [[ -z "$formula_hash" ]]; then
-  echo "Homebrew formula does not declare a source archive checksum" >&2
-  exit 1
-fi
-if [[ "$formula_hash" != "$first_hash" ]]; then
-  echo "Homebrew formula checksum is $formula_hash; source archive checksum is $first_hash" >&2
-  exit 1
+if [[ "${RESIZELINT_VERIFY_FORMULA_CHECKSUM:-0}" == "1" ]]; then
+  formula_hash=$(awk '/^[[:space:]]*sha256 / { gsub(/"/, "", $2); print $2; exit }' "$formula")
+  if [[ -z "$formula_hash" ]]; then
+    echo "Homebrew formula does not declare a source archive checksum" >&2
+    exit 1
+  fi
+  if [[ "$formula_hash" != "$first_hash" ]]; then
+    echo "Homebrew formula checksum is $formula_hash; source archive checksum is $first_hash" >&2
+    exit 1
+  fi
 fi
 
 listing="$temporary_root/listing.txt"
@@ -56,4 +58,7 @@ if grep -Eq '(^|/)Formula/|(^|/)\.build/|(^|/)\.git/' "$listing"; then
   exit 1
 fi
 
-echo "Source archive reproducibility and Homebrew checksum test passed: $first_hash"
+echo "Source archive reproducibility test passed: $first_hash"
+if [[ "${RESIZELINT_VERIFY_FORMULA_CHECKSUM:-0}" == "1" ]]; then
+  echo "Homebrew formula checksum test passed."
+fi
