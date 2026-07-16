@@ -64,6 +64,9 @@ jobs:
       - name: Test Linux release packaging
         run: Scripts/ci/test-linux-release-script.sh
 
+      - name: Test signing identity resolution
+        run: Scripts/ci/test-signing-identity-resolution.sh
+
       - name: Validate machine contracts
         run: Scripts/ci/validate-machine-contracts.py
 
