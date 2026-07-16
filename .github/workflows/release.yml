@@ -40,7 +40,7 @@ jobs:
         run: Scripts/release/build-linux.sh "$RUNNER_TEMP/linux" "$VERSION"
 
       - name: Upload Linux archive
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: linux-release
           path: ${{ runner.temp }}/linux/ResizeLint-${{ inputs.version }}-linux-x86_64.tar.gz
