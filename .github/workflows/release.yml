@@ -86,7 +86,7 @@ jobs:
           for value in APPLICATION_P12 APPLICATION_PASSWORD INSTALLER_P12 INSTALLER_PASSWORD TEAM_ID; do
             test -n "${!value}"
           done
-          test "$TEAM_ID" = "9K594G5QQ8"
+          test "$TEAM_ID" = "4NGTWD262W"
 
           keychain="$RUNNER_TEMP/resizelint-signing.keychain-db"
           keychain_password=$(uuidgen)

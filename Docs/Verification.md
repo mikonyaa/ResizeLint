@@ -35,11 +35,11 @@ fix behavior. The detailed defensive assessment is in the
 - The composite Action consumer fixture passed, and both workflows passed
   actionlint 1.7.12.
 
-The local machine did not contain Developer ID Application or Developer ID
-Installer identities for Team `9K594G5QQ8`. The unsigned artifacts are
-engineering evidence only: signature, notarization, stapling, Gatekeeper
-acceptance, and distribution remain blocked until the owner installs the
-certificates and explicitly starts the protected release process.
+The local signing-readiness check finds Developer ID Application and Developer
+ID Installer identities for distribution Team `4NGTWD262W`. General engineering
+tests do not use private signing credentials; signature, notarization, stapling,
+and Gatekeeper evidence must come from the explicitly approved protected release
+workflow.
 
 ## Precision, performance, and interface evidence
 
