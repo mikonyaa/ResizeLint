@@ -21,14 +21,15 @@ It scans Swift source, property lists, and Xcode project metadata, then produces
 
 ## Installation
 
-Homebrew installation becomes available with the signed 1.0 release:
+Install the signed and notarized macOS package from the `1.0.0` release:
 
 ```bash
-brew install mikonyaa/tap/resizelint
+curl -fLO https://github.com/mikonyaa/ResizeLint/releases/download/1.0.0/ResizeLint-1.0.0-macos-universal.pkg
+sudo installer -pkg ResizeLint-1.0.0-macos-universal.pkg -target /
 resizelint version
 ```
 
-Until then, build the current source checkout with Swift 6.3.3:
+You can also build the current source checkout with Swift 6.3.3:
 
 ```bash
 git clone https://github.com/mikonyaa/ResizeLint.git
@@ -77,11 +78,11 @@ ResizeLint does not rewrite app architecture and does not upload source. It can 
 
 - **RL009 · fullscreen-requirement-review** — requests a deliberate review of full-screen requirements.
 
-See [the complete rule documentation](Docs/Rules/README.md) for detection boundaries and adaptive examples. The release candidate reached 100% error and warning precision on the documented [external validation corpus](Docs/ExternalCorpus.md).
+See [the complete rule documentation](Docs/Rules/README.md) for detection boundaries and adaptive examples. Version 1.0.0 reached 100% error and warning precision on the documented [external validation corpus](Docs/ExternalCorpus.md).
 
 ## GitHub Action
 
-The Action becomes available with the 1.0 release and supports macOS arm64, macOS x86_64, and Linux x86_64:
+The Action is available through the moving major tag `v1` and supports macOS arm64, macOS x86_64, and Linux x86_64:
 
 ```yaml
 - id: resizelint
@@ -181,7 +182,7 @@ Candidates for 1.1 include richer Xcode target mapping, `resizelint explain RL00
 
 ## Contributing, security, and license
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing a rule. False-positive changes need a minimized regression fixture and corpus evidence. Report sensitive problems through the process in [SECURITY.md](SECURITY.md). Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Maintainers can review the [local release-candidate evidence](Docs/Verification.md) and follow the [release preparation guide](Docs/ReleasePreparation.md) for protected signing and notarization readiness.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing a rule. False-positive changes need a minimized regression fixture and corpus evidence. Report sensitive problems through the process in [SECURITY.md](SECURITY.md). Community expectations are in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Maintainers can review the [1.0 verification evidence](Docs/Verification.md) and follow the [release preparation guide](Docs/ReleasePreparation.md) for protected signing and notarization readiness.
 
 ResizeLint is available under the [MIT License](LICENSE).
 

@@ -37,13 +37,22 @@ if [[ "$first_hash" != "$second_hash" ]]; then
 fi
 
 if [[ "${RESIZELINT_VERIFY_FORMULA_CHECKSUM:-0}" == "1" ]]; then
+  formula_url=$(awk '/^[[:space:]]*url / { gsub(/"/, "", $2); print $2; exit }' "$formula")
   formula_hash=$(awk '/^[[:space:]]*sha256 / { gsub(/"/, "", $2); print $2; exit }' "$formula")
+  if [[ -z "$formula_url" ]]; then
+    echo "Homebrew formula does not declare a source archive URL" >&2
+    exit 1
+  fi
   if [[ -z "$formula_hash" ]]; then
     echo "Homebrew formula does not declare a source archive checksum" >&2
     exit 1
   fi
-  if [[ "$formula_hash" != "$first_hash" ]]; then
-    echo "Homebrew formula checksum is $formula_hash; source archive checksum is $first_hash" >&2
+  formula_archive="$temporary_root/formula-source.tar.gz"
+  curl --fail --location --proto '=https' --tlsv1.2 --retry 3 \
+    --silent --show-error --output "$formula_archive" "$formula_url"
+  formula_archive_hash=$(shasum -a 256 "$formula_archive" | awk '{ print $1 }')
+  if [[ "$formula_hash" != "$formula_archive_hash" ]]; then
+    echo "Homebrew formula checksum is $formula_hash; published archive checksum is $formula_archive_hash" >&2
     exit 1
   fi
 fi
@@ -60,5 +69,5 @@ fi
 
 echo "Source archive reproducibility test passed: $first_hash"
 if [[ "${RESIZELINT_VERIFY_FORMULA_CHECKSUM:-0}" == "1" ]]; then
-  echo "Homebrew formula checksum test passed."
+  echo "Homebrew formula published-archive checksum test passed."
 fi
