@@ -14,8 +14,34 @@ fi
 temporary_root=$(mktemp -d "${TMPDIR:-/tmp}/resizelint-source-test.XXXXXX")
 trap 'rm -rf "$temporary_root"' EXIT
 
-first=$($builder "$temporary_root/first" 1.0.0)
-second=$($builder "$temporary_root/second" 1.0.0)
+fake_bin="$temporary_root/bin"
+mkdir -p "$fake_bin"
+real_tar=$(command -v tar)
+cat > "$fake_bin/tar" <<'EOF'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "${1:-}" == "--version" ]]; then
+  echo "tar (GNU tar) 1.34"
+  exit 0
+fi
+
+for argument in "$@"; do
+  case "$argument" in
+    --no-fflags|--no-mac-metadata)
+      echo "tar: unrecognized option '$argument'" >&2
+      exit 64
+      ;;
+  esac
+done
+
+exec "$REAL_TAR" "$@"
+EOF
+chmod 0755 "$fake_bin/tar"
+
+first=$(REAL_TAR="$real_tar" PATH="$fake_bin:$PATH" "$builder" "$temporary_root/first" 1.0.0)
+second=$(REAL_TAR="$real_tar" PATH="$fake_bin:$PATH" "$builder" "$temporary_root/second" 1.0.0)
 first_hash=$(shasum -a 256 "$first" | awk '{ print $1 }')
 second_hash=$(shasum -a 256 "$second" | awk '{ print $1 }')
 

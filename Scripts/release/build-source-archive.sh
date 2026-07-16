@@ -44,16 +44,21 @@ listing="$temporary_root/files.txt"
 )
 
 uncompressed="$temporary_root/source.tar"
+tar_options=(
+  --format=ustar
+  --uid 0
+  --gid 0
+  --uname root
+  --gname root
+  --no-acls
+  --no-xattrs
+)
+if tar --version 2>/dev/null | grep -q 'bsdtar'; then
+  tar_options+=(--no-fflags --no-mac-metadata)
+fi
+
 tar -cf "$uncompressed" \
-  --format=ustar \
-  --uid 0 \
-  --gid 0 \
-  --uname root \
-  --gname root \
-  --no-acls \
-  --no-fflags \
-  --no-mac-metadata \
-  --no-xattrs \
+  "${tar_options[@]}" \
   -C "$staging" \
   -T "$listing"
 
