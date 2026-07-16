@@ -22,40 +22,23 @@ temporary_root=$(mktemp -d "${TMPDIR:-/tmp}/resizelint-source.XXXXXX")
 trap 'rm -rf "$temporary_root"' EXIT
 
 prefix="ResizeLint-$version"
-staging="$temporary_root/staging"
-mkdir -p "$staging/$prefix"
-
+uncompressed="$temporary_root/source.tar"
 (
   cd "$repository_root"
-  git checkout-index -a --prefix="$staging/$prefix/"
+  tree=$(git write-tree)
+  git archive \
+    --format=tar \
+    --mtime="2000-01-01T00:00:00Z" \
+    --prefix="$prefix/" \
+    --output="$uncompressed" \
+    "$tree" \
+    -- \
+    . \
+    ':(exclude).build' \
+    ':(exclude).github' \
+    ':(exclude)Artifacts' \
+    ':(exclude)Formula'
 )
-
-rm -rf \
-  "$staging/$prefix/.build" \
-  "$staging/$prefix/.github" \
-  "$staging/$prefix/Artifacts" \
-  "$staging/$prefix/Formula"
-
-find "$staging/$prefix" -exec touch -h -t 200001010000 {} +
-listing="$temporary_root/files.txt"
-(
-  cd "$staging"
-  LC_ALL=C find "$prefix" -print | LC_ALL=C sort > "$listing"
-)
-
-uncompressed="$temporary_root/source.tar"
-tar -cf "$uncompressed" \
-  --format=ustar \
-  --uid 0 \
-  --gid 0 \
-  --uname root \
-  --gname root \
-  --no-acls \
-  --no-fflags \
-  --no-mac-metadata \
-  --no-xattrs \
-  -C "$staging" \
-  -T "$listing"
 
 archive="$destination/ResizeLint-$version-source.tar.gz"
 gzip -9 -n -c "$uncompressed" > "$archive"

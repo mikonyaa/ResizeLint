@@ -2,7 +2,7 @@ class Resizelint < Formula
   desc "Static analysis for Swift apps that need to work in every window size"
   homepage "https://github.com/mikonyaa/ResizeLint"
   url "https://github.com/mikonyaa/ResizeLint/releases/download/1.0.0/ResizeLint-1.0.0-source.tar.gz"
-  sha256 "fea82e67b1c23fbfea201d7d326b553d98847bdfed8cf2164053f2e1be33fac1"
+  sha256 "4cea87f9dcc2e418f97cd3b4f5c2ac8d66f817b3a74962d92e8cef4f7328f173"
   license "MIT"
 
   depends_on "swift" => :build
