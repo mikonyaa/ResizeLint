@@ -9,4 +9,3 @@
 *.png binary
 
 .github export-ignore
-Tests export-ignore

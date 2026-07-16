@@ -21,27 +21,13 @@ cat > "$fake_bin/tar" <<'EOF'
 #!/usr/bin/env bash
 
 set -euo pipefail
-
-if [[ "${1:-}" == "--version" ]]; then
-  echo "tar (GNU tar) 1.34"
-  exit 0
-fi
-
-for argument in "$@"; do
-  case "$argument" in
-    --no-fflags|--no-mac-metadata)
-      echo "tar: unrecognized option '$argument'" >&2
-      exit 64
-      ;;
-  esac
-done
-
-exec "$REAL_TAR" "$@"
+echo "Source archive builder must not invoke system tar" >&2
+exit 66
 EOF
 chmod 0755 "$fake_bin/tar"
 
-first=$(REAL_TAR="$real_tar" PATH="$fake_bin:$PATH" "$builder" "$temporary_root/first" 1.0.0)
-second=$(REAL_TAR="$real_tar" PATH="$fake_bin:$PATH" "$builder" "$temporary_root/second" 1.0.0)
+first=$(PATH="$fake_bin:$PATH" "$builder" "$temporary_root/first" 1.0.0)
+second=$(PATH="$fake_bin:$PATH" "$builder" "$temporary_root/second" 1.0.0)
 first_hash=$(shasum -a 256 "$first" | awk '{ print $1 }')
 second_hash=$(shasum -a 256 "$second" | awk '{ print $1 }')
 
@@ -61,7 +47,7 @@ if [[ "$formula_hash" != "$first_hash" ]]; then
 fi
 
 listing="$temporary_root/listing.txt"
-tar -tzf "$first" > "$listing"
+"$real_tar" -tzf "$first" > "$listing"
 grep -q '^ResizeLint-1.0.0/Package.swift$' "$listing"
 grep -q '^ResizeLint-1.0.0/Tests/ResizeLintCoreTests/VersionTests.swift$' "$listing"
 
