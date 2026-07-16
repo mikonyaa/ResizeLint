@@ -4,6 +4,7 @@ set -euo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 builder="$repository_root/Scripts/release/build-source-archive.sh"
+formula="$repository_root/Formula/resizelint.rb"
 
 if [[ ! -x "$builder" ]]; then
   echo "Source archive builder is missing or not executable: $builder" >&2
@@ -23,6 +24,16 @@ if [[ "$first_hash" != "$second_hash" ]]; then
   exit 1
 fi
 
+formula_hash=$(awk '/^[[:space:]]*sha256 / { gsub(/"/, "", $2); print $2; exit }' "$formula")
+if [[ -z "$formula_hash" ]]; then
+  echo "Homebrew formula does not declare a source archive checksum" >&2
+  exit 1
+fi
+if [[ "$formula_hash" != "$first_hash" ]]; then
+  echo "Homebrew formula checksum is $formula_hash; source archive checksum is $first_hash" >&2
+  exit 1
+fi
+
 listing="$temporary_root/listing.txt"
 tar -tzf "$first" > "$listing"
 grep -q '^ResizeLint-1.0.0/Package.swift$' "$listing"
@@ -33,4 +44,4 @@ if grep -Eq '(^|/)Formula/|(^|/)\.build/|(^|/)\.git/' "$listing"; then
   exit 1
 fi
 
-echo "Source archive self-test passed: $first_hash"
+echo "Source archive reproducibility and Homebrew checksum test passed: $first_hash"
