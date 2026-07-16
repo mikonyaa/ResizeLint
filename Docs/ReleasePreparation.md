@@ -37,6 +37,10 @@ also builds the deterministic source archive, verifies `SHA256SUMS`, and creates
 a draft release. Publishing the draft and creating the moving `v1` tag remain
 separate owner-approved actions.
 
+For version 1.0.0, the protected workflow completed successfully on 2026-07-16.
+The owner subsequently published the release, and the moving `v1` tag points to
+the same release commit as exact tag `1.0.0`.
+
 For a local first release, use the scripts under `Scripts/release` with
 identities already installed in the login Keychain. Store notarization
 credentials through `notarytool store-credentials`; never put a password or key

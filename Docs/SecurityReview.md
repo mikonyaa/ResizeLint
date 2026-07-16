@@ -112,14 +112,19 @@ swift build -c release
 Scripts/benchmark/run.sh .build/release/resizelint 250000 10
 ```
 
-## Residual limitations
+## Residual limitations and release closure
 
 - Cancellation cannot interrupt a synchronous SwiftParser call already in
   progress; it prevents later batches and suppresses a cancelled result.
 - Xcode 27 was not available; Xcode 26.5 simulator evidence is documented
   separately.
-- Developer ID Application and Installer identities were not installed.
-  Signed-artifact, notarization, stapling, and Gatekeeper acceptance checks
-  therefore remain release blockers. Unsigned ZIP and package structure were
-  verified without contacting Apple's notarization service.
 - Advisory databases change over time and must be queried again for a release.
+
+The local defensive review did not import release credentials. That boundary
+was preserved: signing and notarization ran only in the protected release
+workflow. The published 1.0.0 assets were independently downloaded on
+2026-07-17; all checksums matched, the installer signature and stapled ticket
+validated, Gatekeeper accepted the package as `Notarized Developer ID`, and the
+universal executable satisfied strict signature and notarization checks. The
+previous signing and notarization release blocker is therefore closed for
+version 1.0.0.

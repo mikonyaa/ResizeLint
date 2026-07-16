@@ -1,9 +1,10 @@
-# Release candidate verification
+# Version 1.0 verification
 
-Local verification completed on 2026-07-13 without publishing a repository,
-tag, package, or release. It covered the Swift package, command-line contracts,
-distribution scripts, an exact Linux toolchain, and simulator-only ResizeLab
-behavior.
+Local engineering verification completed on 2026-07-13. The protected release
+workflow then completed successfully for exact tag `1.0.0` on 2026-07-16, and
+the release was published with signed macOS, Linux, source, and checksum
+assets. This document combines the pre-release engineering evidence with the
+published-artifact verification.
 
 ## Automated tests and coverage
 
@@ -26,20 +27,23 @@ fix behavior. The detailed defensive assessment is in the
 ## Compatibility and artifacts
 
 - Native macOS release builds completed independently for arm64 and x86_64.
-- The local universal executable reports both architectures and version 1.0.0.
-- The ZIP executable and package payload matched the universal executable
-  byte-for-byte; SHA-256 verification succeeded.
+- The published ZIP contains a universal arm64 and x86_64 executable that
+  passes strict code-signature verification and Apple's notarization
+  requirement.
+- All four published archives match the release `SHA256SUMS` file.
+- The published installer is signed by `Developer ID Installer` for Team
+  `4NGTWD262W`, carries a trusted timestamp, has a valid stapled notarization
+  ticket, and is accepted by Gatekeeper as `Notarized Developer ID`.
 - The Linux release archive contained an x86_64 ELF executable that reported
   version 1.0.0 inside the Swift 6.3.3 Jammy container.
 - Source-archive and checksum self-tests passed.
 - The composite Action consumer fixture passed, and both workflows passed
   actionlint 1.7.12.
 
-The local signing-readiness check finds Developer ID Application and Developer
-ID Installer identities for distribution Team `4NGTWD262W`. General engineering
-tests do not use private signing credentials; signature, notarization, stapling,
-and Gatekeeper evidence must come from the explicitly approved protected release
-workflow.
+The protected [release workflow](https://github.com/mikonyaa/ResizeLint/actions/runs/29513460101)
+completed successfully at commit `cde1a7b5165cd6dc225166e6e0a7614a32ebce28`.
+Published assets were independently downloaded and rechecked on 2026-07-17
+with `shasum`, `pkgutil`, `stapler`, `spctl`, `codesign`, and `file`.
 
 ## Precision, performance, and interface evidence
 
@@ -60,13 +64,13 @@ square, wide, portrait, landscape, accessibility text, appearance, Reduce
 Motion, and Reduce Transparency evidence is documented in the
 [simulator QA report](ResizeLabQA.md).
 
-## Remaining release limitations
+## Remaining limitations
 
 - Xcode 27 and Device Hub were unavailable; exact-size render tests and iOS
   26.5 simulator orientations were used instead.
-- Signed and notarized installation cannot be verified without the two
-  Developer ID identities.
 - Advisory databases can change and must be queried again immediately before
-  a release.
-- Public Action, Homebrew tap, and clean-clone-from-hosting checks require an
-  approved published repository and exact release tag.
+  a future release.
+- The standalone `mikonyaa/homebrew-tap` repository is not published. The
+  signed and notarized package remains the canonical macOS installation path.
+- Physical-device iPhone Mirroring was not used or claimed; ResizeLab evidence
+  is simulator-only.
