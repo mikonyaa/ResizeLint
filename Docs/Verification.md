@@ -37,6 +37,11 @@ fix behavior. The detailed defensive assessment is in the
 - The Linux release archive contained an x86_64 ELF executable that reported
   version 1.0.0 inside the Swift 6.3.3 Jammy container.
 - Source-archive and checksum self-tests passed.
+- The Homebrew formula passed `brew audit --strict`, built and installed
+  version 1.0.0 from the published source archive through a temporary local
+  tap, returned `1.0.0` from the installed executable, and passed its
+  `brew test` block. The temporary installation and tap were removed after
+  verification.
 - The composite Action consumer fixture passed, and both workflows passed
   actionlint 1.7.12.
 
