@@ -37,11 +37,14 @@ fix behavior. The detailed defensive assessment is in the
 - The Linux release archive contained an x86_64 ELF executable that reported
   version 1.0.0 inside the Swift 6.3.3 Jammy container.
 - Source-archive and checksum self-tests passed.
-- The Homebrew formula passed `brew audit --strict`, built and installed
-  version 1.0.0 from the published source archive through a temporary local
-  tap, returned `1.0.0` from the installed executable, and passed its
-  `brew test` block. The temporary installation and tap were removed after
-  verification.
+- The formula in the public
+  [`mikonyaa/homebrew-tap`](https://github.com/mikonyaa/homebrew-tap)
+  repository passed `brew audit --strict`, built and installed version 1.0.0
+  from the published source archive, returned `1.0.0` from the installed
+  executable, and passed its `brew test` block. The tap's
+  [`brew test-bot` workflow](https://github.com/mikonyaa/homebrew-tap/actions/runs/29587928810)
+  passed on macOS Intel, macOS 26, and Ubuntu. The temporary local installation
+  and tap were removed after verification.
 - The composite Action consumer fixture passed, and both workflows passed
   actionlint 1.7.12.
 
@@ -75,7 +78,5 @@ Motion, and Reduce Transparency evidence is documented in the
   26.5 simulator orientations were used instead.
 - Advisory databases can change and must be queried again immediately before
   a future release.
-- The standalone `mikonyaa/homebrew-tap` repository is not published. The
-  signed and notarized package remains the canonical macOS installation path.
 - Physical-device iPhone Mirroring was not used or claimed; ResizeLab evidence
   is simulator-only.

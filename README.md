@@ -21,6 +21,13 @@ It scans Swift source, property lists, and Xcode project metadata, then produces
 
 ## Installation
 
+Install with Homebrew:
+
+```bash
+brew install mikonyaa/tap/resizelint
+resizelint version
+```
+
 Install the signed and notarized macOS package from the `1.0.0` release:
 
 ```bash
@@ -29,7 +36,7 @@ sudo installer -pkg ResizeLint-1.0.0-macos-universal.pkg -target /
 resizelint version
 ```
 
-You can also build the current source checkout with Swift 6.3.3:
+Or build the current source checkout with Swift 6.3.3:
 
 ```bash
 git clone https://github.com/mikonyaa/ResizeLint.git
