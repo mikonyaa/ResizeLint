@@ -11,7 +11,7 @@ let package = Package(
         .executable(name: "resizelint", targets: ["ResizeLintCLI"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "603.0.2"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "604.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
         .package(url: "https://github.com/jpsim/Yams.git", exact: "6.2.2"),
     ],
