@@ -57,6 +57,8 @@ with tempfile.TemporaryDirectory(prefix='resizelint-consumer-') as temporary:
             'static func readScale() -> Double { return UIScreen.main.scale }',
             'class func readScale() -> Double { return UIScreen.main.scale }',
             'static var scale: Double { UIScreen.main.scale }',
+            'static subscript(index: Int) -> Double { get { UIScreen.main.scale } }',
+            'class subscript(index: Int) -> Double { get { UIScreen.main.scale } }',
             'func render() -> Double { func nested() -> Double { UIScreen.main.scale }; return nested() }',
             'func render() -> Double { let value = { UIScreen.main.scale }; return value() }',
             'struct Nested { func render() -> Double { UIScreen.main.scale } }',
@@ -201,6 +203,8 @@ with tempfile.TemporaryDirectory(prefix='resizelint-consumer-') as temporary:
         compiler = subprocess.check_output(['xcrun', '--sdk', 'iphonesimulator', '--find', 'swiftc'], text=True).strip()
         for member, changes in [('static func readScale() -> CGFloat { UIScreen.main.scale }', False),
                                 ('class func readScale() -> CGFloat { UIScreen.main.scale }', False),
+                                ('static subscript(index: Int) -> CGFloat { get { UIScreen.main.scale } }', False),
+                                ('class subscript(index: Int) -> CGFloat { get { UIScreen.main.scale } }', False),
                                 ('func readScale() -> CGFloat { UIScreen.main.scale }', True)]:
             source.write_text('import UIKit\n@MainActor class Canvas: UIView { ' + member + ' }\n')
             command = [compiler, '-sdk', sdk, '-target', 'arm64-apple-ios17.0-simulator', '-typecheck', str(source)]

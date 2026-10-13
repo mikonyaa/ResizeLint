@@ -181,6 +181,8 @@ func rl002RejectsUnprovenInstanceContexts() async {
         "static func readScale() -> Double { return UIScreen.main.scale }",
         "class func readScale() -> Double { return UIScreen.main.scale }",
         "static var scale: Double { UIScreen.main.scale }",
+        "static subscript(index: Int) -> Double { get { UIScreen.main.scale } }",
+        "class subscript(index: Int) -> Double { get { UIScreen.main.scale } }",
         "let scale = UIScreen.main.scale",
         "lazy var scale = UIScreen.main.scale",
         "func render() { func local() { _ = UIScreen.main.scale }; local() }",

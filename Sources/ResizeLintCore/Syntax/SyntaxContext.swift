@@ -30,7 +30,7 @@ struct SyntaxContext {
         var owner: ClassDeclSyntax?
         while let ancestor = node {
             if ancestor.is(ClosureExprSyntax.self) || ancestor.is(InitializerDeclSyntax.self)
-                || ancestor.is(DeinitializerDeclSyntax.self) {
+                || ancestor.is(DeinitializerDeclSyntax.self) || ancestor.is(SubscriptDeclSyntax.self) {
                 return false
             }
             if let function = ancestor.as(FunctionDeclSyntax.self) {
