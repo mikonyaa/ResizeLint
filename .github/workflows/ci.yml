@@ -34,6 +34,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Import official Swift signing keys
+        if: runner.os == 'Linux'
+        run: |
+          keyring="$RUNNER_TEMP/resizelint-swift-gnupg"
+          install -d -m 700 "$keyring"
+          curl --fail --location --proto '=https' --tlsv1.2 --compressed --retry 3 \
+            --silent --show-error https://www.swift.org/keys/all-keys.asc \
+            --output "$RUNNER_TEMP/swift-signing-keys.asc"
+          gpg --homedir "$keyring" --batch --import "$RUNNER_TEMP/swift-signing-keys.asc"
+          echo "GNUPGHOME=$keyring" >> "$GITHUB_ENV"
+
       - name: Install Swift 6.3.3
         uses: swift-actions/setup-swift@d8e84bc3a450686a95474d7d6fa4a3301498debc
         with:
@@ -54,9 +65,19 @@ jobs:
       - name: Verify SwiftLint
         if: startsWith(matrix.runner, 'macos')
         run: |
-          command -v swiftlint >/dev/null || brew install swiftlint
-          test "$(swiftlint version)" = "0.65.0"
-          swiftlint --strict
+          archive="$RUNNER_TEMP/portable_swiftlint.zip"
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 3 \
+            --silent --show-error \
+            https://github.com/realm/SwiftLint/releases/download/0.65.0/portable_swiftlint.zip \
+            --output "$archive"
+          printf '%s  %s\n' \
+            d6cb0aa7a2f5f1ef306fc9e37bcb54dc9a26facc8f7784ac0c3dd3eccf5c6ba6 \
+            "$archive" | shasum -a 256 --check
+          mkdir -p "$RUNNER_TEMP/swiftlint-0.65.0"
+          ditto -x -k "$archive" "$RUNNER_TEMP/swiftlint-0.65.0"
+          swiftlint="$RUNNER_TEMP/swiftlint-0.65.0/swiftlint"
+          test "$("$swiftlint" version)" = "0.65.0"
+          "$swiftlint" --strict
 
       - name: Test composite Action consumer
         run: Scripts/ci/test-action-consumer.sh .build/release/resizelint
