@@ -11,19 +11,19 @@ workspace=${GITHUB_WORKSPACE:?GITHUB_WORKSPACE is required}
 input_path=${INPUT_PATH:-.}
 input_config=${INPUT_CONFIG:-}
 fail_on=${INPUT_FAIL_ON:-error}
-version=${INPUT_VERSION:-1.0.0}
+version=${INPUT_VERSION:-1.0.1-rc.1}
 
 case "$fail_on" in
     error|warning|info) ;;
     *)
-        echo "Unsupported fail-on value: $fail_on" >&2
+        echo "Unsupported fail-on value; expected error, warning, or info" >&2
         exit 2
         ;;
 esac
 
 case "$version" in
     *[!0-9A-Za-z.-]*|.*|*..*|*/*|"")
-        echo "Unsupported ResizeLint version: $version" >&2
+        echo "Unsupported ResizeLint version" >&2
         exit 2
         ;;
 esac
@@ -110,6 +110,8 @@ else
 fi
 
 report="$workspace/.resizelint-results.sarif"
+# A failed invocation must not reuse an earlier report or expose a success output.
+rm -f "$report"
 set -- lint "$input_path" --format sarif --output "$report" --fail-on "$fail_on" --no-color
 if [ -n "$input_config" ]; then
     set -- "$@" --config "$input_config"
@@ -119,6 +121,12 @@ set +e
 (cd "$workspace" && "$binary" "$@")
 status=$?
 set -e
+
+case "$status" in
+    0|1) ;;
+    2|3) exit "$status" ;;
+    *) echo "ResizeLint failed operationally with status $status" >&2; exit 3 ;;
+esac
 
 if [ ! -f "$report" ]; then
     echo "ResizeLint did not produce the expected SARIF report" >&2

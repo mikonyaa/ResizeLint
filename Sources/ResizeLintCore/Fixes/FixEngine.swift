@@ -5,6 +5,8 @@ import SwiftParserDiagnostics
 import Darwin
 #elseif canImport(Glibc)
 import Glibc
+#elseif canImport(Musl)
+import Musl
 #endif
 
 public enum FixError: Error, Equatable {

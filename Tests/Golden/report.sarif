@@ -3,10 +3,11 @@
   "version": "2.1.0",
   "runs": [
     {
+      "columnKind": "utf16CodeUnits",
       "tool": {
         "driver": {
           "name": "ResizeLint",
-          "version": "1.0.0",
+          "version": "1.0.1-rc.1",
           "informationUri": "https://github.com/mikonyaa/ResizeLint",
           "rules": [
             { "id": "RL001", "name": "main-screen-bounds", "defaultConfiguration": { "level": "error" }, "helpUri": "https://github.com/mikonyaa/ResizeLint/blob/v1/Docs/Rules/RL001.md" },
@@ -34,7 +35,7 @@
               }
             }
           ],
-          "partialFingerprints": { "resizelint/v1": "sha256:fixture" },
+          "partialFingerprints": { "resizelint/v2": "sha256:fixture" },
           "baselineState": "new"
         }
       ]

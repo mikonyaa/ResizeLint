@@ -26,13 +26,33 @@ jobs:
           - macos-26
           - ubuntu-22.04
           - macos-26-intel
-          - ubuntu-latest
+          - ubuntu-24.04
 
     steps:
       - name: Check out source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           persist-credentials: false
+
+      - name: Import official Swift signing keys
+        if: runner.os == 'Linux'
+        run: |
+          keyring="$RUNNER_TEMP/resizelint-swift-gnupg"
+          install -d -m 700 "$keyring"
+          curl --fail --location --proto '=https' --tlsv1.2 --compressed --retry 3 \
+            --silent --show-error https://www.swift.org/keys/all-keys.asc \
+            --output "$RUNNER_TEMP/swift-signing-keys.asc"
+          gpg --homedir "$keyring" --batch --import "$RUNNER_TEMP/swift-signing-keys.asc"
+          echo "GNUPGHOME=$keyring" >> "$GITHUB_ENV"
+
+      - name: Install Swift system dependencies on Ubuntu 22.04
+        if: matrix.runner == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            binutils git unzip gnupg2 libc6-dev libcurl4-openssl-dev libedit2 \
+            libgcc-11-dev libpython3-dev libsqlite3-0 libstdc++-11-dev \
+            libxml2-dev libz3-dev pkg-config python3-lldb-13 tzdata zlib1g-dev
 
       - name: Install Swift 6.3.3
         uses: swift-actions/setup-swift@d8e84bc3a450686a95474d7d6fa4a3301498debc
@@ -54,9 +74,19 @@ jobs:
       - name: Verify SwiftLint
         if: startsWith(matrix.runner, 'macos')
         run: |
-          command -v swiftlint >/dev/null || brew install swiftlint
-          test "$(swiftlint version)" = "0.65.0"
-          swiftlint --strict
+          archive="$RUNNER_TEMP/portable_swiftlint.zip"
+          curl --fail --location --proto '=https' --tlsv1.2 --retry 3 \
+            --silent --show-error \
+            https://github.com/realm/SwiftLint/releases/download/0.65.0/portable_swiftlint.zip \
+            --output "$archive"
+          printf '%s  %s\n' \
+            d6cb0aa7a2f5f1ef306fc9e37bcb54dc9a26facc8f7784ac0c3dd3eccf5c6ba6 \
+            "$archive" | shasum -a 256 --check
+          mkdir -p "$RUNNER_TEMP/swiftlint-0.65.0"
+          ditto -x -k "$archive" "$RUNNER_TEMP/swiftlint-0.65.0"
+          swiftlint="$RUNNER_TEMP/swiftlint-0.65.0/swiftlint"
+          test "$("$swiftlint" version)" = "0.65.0"
+          "$swiftlint" --strict
 
       - name: Test composite Action consumer
         run: Scripts/ci/test-action-consumer.sh .build/release/resizelint
@@ -72,6 +102,15 @@ jobs:
           RESIZELINT_VERIFY_FORMULA_CHECKSUM: ${{ matrix.runner == 'macos-26' && '1' || '0' }}
         run: Scripts/release/test-source-archive.sh
 
+      - name: Install machine verification dependency
+        run: |
+          python3 -m venv "$RUNNER_TEMP/resizelint-verification"
+          "$RUNNER_TEMP/resizelint-verification/bin/python" -m pip install -r Scripts/ci/requirements.txt
+          echo "$RUNNER_TEMP/resizelint-verification/bin" >> "$GITHUB_PATH"
+
+      - name: Test release candidate on production executable
+        run: python3 Scripts/ci/test-release-candidate.py .build/release/resizelint
+
       - name: Validate machine contracts
         run: Scripts/ci/validate-machine-contracts.py
 
@@ -80,6 +119,9 @@ jobs:
 
       - name: Check publication hygiene
         run: Scripts/ci/public-artifact-scan.sh
+
+      - name: Test publication hygiene policy
+        run: Scripts/ci/test-public-artifact-scan.sh
 
       - name: Run benchmark smoke test
         if: matrix.runner == 'macos-26' && github.event_name != 'pull_request'

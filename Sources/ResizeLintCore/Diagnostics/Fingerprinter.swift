@@ -1,6 +1,17 @@
 import Foundation
 
 public enum Fingerprinter {
+    static func declarationFingerprint(
+        ruleID: String, path: String, syntaxKind: String,
+        surroundingTokens: [String], declarationTokens: [String]
+    ) -> String {
+        fingerprint(
+            ruleID: ruleID, path: path,
+            syntaxKind: "v2:\(syntaxKind):\(declarationTokens.joined(separator: "\u{1E}"))",
+            surroundingTokens: surroundingTokens
+        )
+    }
+
     public static func fingerprint(
         ruleID: String,
         path: String,

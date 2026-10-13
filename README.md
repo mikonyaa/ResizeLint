@@ -15,20 +15,22 @@ ResizeLint is a local static analyzer for Swift applications that must remain co
 
 It scans Swift source, property lists, and Xcode project metadata, then produces stable diagnostics for people and automation. Human and Xcode output make findings easy to fix locally; JSON and SARIF integrate with CI and code scanning. Analysis is deterministic, source stays on the machine, and ResizeLint has no daemon, account, telemetry, or cloud service.
 
+This checkout is **1.0.1-rc.1**, a local release candidate addressing six consumer defects. See [candidate changes and verification](Docs/ReleaseCandidate.md). Publication, tap installation and notarized distribution require separate artifact evidence.
+
 - **Focused:** nine high-confidence rules for UIKit geometry, scene lifecycle, and adaptive layout decisions.
 - **Adoptable:** baselines, scoped suppressions, severity overrides, and one deliberately conservative safe fix.
 - **Automation-ready:** stable rule IDs, reproducible ordering, machine-readable reports, and a checksum-verifying GitHub Action.
 
 ## Installation
 
-Install with Homebrew:
+The published Homebrew formula installs 1.0.0, not this candidate:
 
 ```bash
 brew install mikonyaa/tap/resizelint
 resizelint version
 ```
 
-Install the signed and notarized macOS package from the `1.0.0` release:
+The existing signed macOS package is also the older `1.0.0` release. Its fixes and baseline behavior differ from this candidate:
 
 ```bash
 curl -fLO https://github.com/mikonyaa/ResizeLint/releases/download/1.0.0/ResizeLint-1.0.0-macos-universal.pkg
@@ -36,16 +38,25 @@ sudo installer -pkg ResizeLint-1.0.0-macos-universal.pkg -target /
 resizelint version
 ```
 
-Or build the current source checkout with Swift 6.3.3:
+Build a candidate source checkout/archive with Swift 6.3.3:
 
 ```bash
-git clone https://github.com/mikonyaa/ResizeLint.git
-cd ResizeLint
+cd ResizeLint-1.0.1-rc.1
 swift build -c release
 .build/release/resizelint version
 ```
 
-ResizeLint supports macOS 14 or newer on Apple silicon and Intel, plus Ubuntu 22.04 or newer on x86_64.
+The candidate targets macOS 14 or newer on Apple silicon and Intel, plus Ubuntu 22.04/24.04 on x86_64. Its Linux archive statically links Swift, Foundation and musl and requires no separately installed Swift runtime. The published 1.0.0 Linux archive requires Swift runtime libraries; use the verified candidate archive for a Swift-free environment.
+
+Extract a local candidate archive into a private directory and run its executable directly:
+
+```bash
+shasum -a 256 -c SHA256SUMS
+unzip ResizeLint-1.0.1-rc.1-macos-universal.zip -d local-resizelint
+# Linux: tar -xzf ResizeLint-1.0.1-rc.1-linux-x86_64.tar.gz -C local-resizelint
+./local-resizelint/resizelint version
+./local-resizelint/resizelint lint . --format json
+```
 
 ## 20-second terminal demo
 
@@ -89,7 +100,7 @@ See [the complete rule documentation](Docs/Rules/README.md) for detection bounda
 
 ## GitHub Action
 
-The Action is available through the moving major tag `v1` and supports macOS arm64, macOS x86_64, and Linux x86_64:
+The published moving tag `v1` currently uses the older release. Candidate Action changes remain local until separately published; the archive consumer checks its runner on macOS and Swift-free Linux:
 
 ```yaml
 - id: resizelint
@@ -145,11 +156,11 @@ resizelint baseline check .
 resizelint baseline update .
 ```
 
-Baselines contain stable fingerprints rather than line-only positions. New findings continue to fail CI. See [baseline behavior](Docs/Baselines.md).
+Baseline v2 includes enclosing declarations and occurrence counts. Existing v1 users should run `resizelint baseline migrate .`; ambiguous/stale entries require review and are not automatically accepted. See [baseline behavior](Docs/Baselines.md).
 
 ## Safe fixes
 
-`lint` never changes files. `fix` only applies a context-proven RL002 replacement where `traitCollection.displayScale` is directly available.
+`lint` never changes files. `fix` only applies the limited structural RL002 replacement `self.traitCollection.displayScale` in eligible instance bodies. Static/class members, nested declarations, closures and unknown receivers retain diagnostics without edits.
 
 ```bash
 resizelint fix Sources --dry-run
@@ -157,6 +168,8 @@ resizelint fix Sources
 ```
 
 Edits are checked for overlap, reparsed, written atomically, and verified by a second analysis pass. Permissions and line endings are preserved.
+
+Reparsing is a syntax check; compile and test the application after fixing. Independent stub and native UIKit compilation cover the candidate's supported fix boundaries.
 
 ## ResizeLab
 

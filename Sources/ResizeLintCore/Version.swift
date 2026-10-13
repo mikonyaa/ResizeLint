@@ -1,3 +1,3 @@
 public enum ResizeLintVersion {
-    public static let current = "1.0.0"
+    public static let current = "1.0.1-rc.1"
 }

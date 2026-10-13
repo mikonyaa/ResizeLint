@@ -8,7 +8,7 @@ func versionCommand() async throws {
     let result = try await ResizeLintCommand.runForTesting(arguments: ["version"])
 
     #expect(result.exitCode == 0)
-    #expect(result.standardOutput == "1.0.0\n")
+    #expect(result.standardOutput == ResizeLintVersion.current + "\n")
     #expect(result.standardError.isEmpty)
 }
 
@@ -244,4 +244,36 @@ private func cliTemporaryDirectory() throws -> URL {
 private func writeCLI(_ contents: String, to url: URL) throws {
     try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     try contents.write(to: url, atomically: true, encoding: .utf8)
+}
+
+@Test("Production parser rejects invalid option values and honors command boundaries")
+func invocationValidation() async throws {
+    for arguments in [
+        ["lint", "--fail-on", "potato"], ["lint", "--jobs", "0"], ["lint", "--jobs", "-1"],
+        ["lint", "--format", "potato"], ["lint", "--dry-run"], ["rules", "--jobs", "1"],
+    ] {
+        let result = try await ResizeLintCommand.runForTesting(arguments: arguments)
+        #expect(result.exitCode == 2)
+        #expect(result.standardOutput.isEmpty)
+        #expect(!result.standardError.isEmpty)
+    }
+    let help = try await ResizeLintCommand.runForTesting(arguments: ["lint", "--help"])
+    #expect(help.exitCode == 0)
+    #expect(help.standardOutput.contains("USAGE:"))
+}
+
+@Test("Unreadable source fails the gate and cannot create a partial baseline")
+func unreadableSourceCannotPass() async throws {
+    let root = try cliTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appending(path: "View.swift")
+    try writeCLI("let bounds = UIScreen.main.bounds", to: source)
+    try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: source.path)
+    defer { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: source.path) }
+    let result = try await ResizeLintCommand.runForTesting(arguments: ["lint", "--format", "json"], currentDirectory: root)
+    #expect(result.exitCode == 3)
+    #expect(result.standardError.contains("Unable to read source"))
+    let created = try await ResizeLintCommand.runForTesting(arguments: ["baseline", "create"], currentDirectory: root)
+    #expect(created.exitCode == 3)
+    #expect(!FileManager.default.fileExists(atPath: root.appending(path: ".resizelint-baseline.json").path))
 }

@@ -19,7 +19,7 @@ func rl002SafeFixContext() async throws {
     let nativeResult = await analyzeForFix(native)
 
     let edit = try #require(safeResult.diagnostics.first { $0.ruleID == "RL002" }?.fix)
-    #expect(edit.replacement == "traitCollection.displayScale")
+    #expect(edit.replacement == "self.traitCollection.displayScale")
     #expect(unsafeResult.diagnostics.first { $0.ruleID == "RL002" }?.fix == nil)
     #expect(nativeResult.diagnostics.first { $0.ruleID == "RL002" }?.fix == nil)
 }
@@ -173,4 +173,47 @@ private func analyzeForFix(_ source: String) async -> AnalysisResult {
     await ResizeAnalyzer().analyze(AnalysisRequest(files: [
         SourceInput(path: "Sources/View.swift", contents: source),
     ]))
+}
+
+@Test("RL002 never edits static, class, nested, closure or unknown receiver contexts")
+func rl002RejectsUnprovenInstanceContexts() async {
+    let bodies = [
+        "static func readScale() -> Double { return UIScreen.main.scale }",
+        "class func readScale() -> Double { return UIScreen.main.scale }",
+        "static var scale: Double { UIScreen.main.scale }",
+        "static subscript(index: Int) -> Double { get { UIScreen.main.scale } }",
+        "class subscript(index: Int) -> Double { get { UIScreen.main.scale } }",
+        "let scale = UIScreen.main.scale",
+        "lazy var scale = UIScreen.main.scale",
+        "func render() { func local() { _ = UIScreen.main.scale }; local() }",
+        "func render() { let closure = { UIScreen.main.scale }; _ = closure }",
+        "struct Nested { func render() { _ = UIScreen.main.scale } }",
+        "class Nested: UIView { func render() { _ = UIScreen.main.scale } }",
+        "init() { let scale = UIScreen.main.scale; super.init(); _ = scale }",
+        "func readScale(value: Double = UIScreen.main.scale) {}",
+    ]
+    for body in bodies {
+        let result = await analyzeForFix("class Canvas: UIView { \(body) }")
+        #expect(result.diagnostics.contains { $0.ruleID == "RL002" })
+        #expect(result.diagnostics.compactMap(\.fix).isEmpty, "Unexpected edit in \(body)")
+    }
+    for source in [
+        "extension UIView { func render() { _ = UIScreen.main.scale } }",
+        "class Canvas: UnknownView { func render() { _ = UIScreen.main.scale } }",
+        "class Canvas: UIView {}\nfunc render() { _ = UIScreen.main.scale }",
+    ] {
+        #expect(await analyzeForFix(source).diagnostics.compactMap(\.fix).isEmpty)
+    }
+}
+
+@Test("RL002 qualifies self and handles direct computed accessors and qualified UIKit bases")
+func rl002UsesExplicitSelf() async throws {
+    let result = await analyzeForFix("""
+    class Canvas: UIKit.UIView {
+        var scale: Double { UIScreen.main.scale }
+        func render() { let traitCollection = 0; _ = traitCollection; _ = UIScreen.main.scale }
+    }
+    """)
+    #expect(result.diagnostics.compactMap(\.fix).count == 2)
+    #expect(result.diagnostics.compactMap(\.fix).allSatisfy { $0.replacement == "self.traitCollection.displayScale" })
 }

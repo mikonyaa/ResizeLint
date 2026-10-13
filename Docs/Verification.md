@@ -1,5 +1,7 @@
 # Version 1.0 verification
 
+This page preserves historical 1.0 evidence; it is not a current verification of the 1.0.1 candidate or a Swift-free Linux installation. The later audit reproduced consumer defects despite those earlier gates. See [candidate requirements](ReleaseCandidate.md) and the separately delivered exact-commit evidence bundle for current results.
+
 Local engineering verification completed on 2026-07-13. The protected release
 workflow then completed successfully for exact tag `1.0.0` on 2026-07-16, and
 the release was published with signed macOS, Linux, source, and checksum

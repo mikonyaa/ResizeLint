@@ -18,7 +18,7 @@ inputs:
   version:
     description: Exact ResizeLint release version to download.
     required: false
-    default: 1.0.0
+    default: 1.0.1-rc.1
 
 outputs:
   sarif:
