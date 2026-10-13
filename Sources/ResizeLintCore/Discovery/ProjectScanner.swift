@@ -3,6 +3,7 @@ import Foundation
 public enum ScanError: Error, Equatable {
     case sourceTooLarge(path: String, bytes: Int)
     case invalidUTF8(String)
+    case incompleteScan
 }
 
 public enum ProjectScanner {

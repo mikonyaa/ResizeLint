@@ -37,6 +37,8 @@ also builds the deterministic source archive, verifies `SHA256SUMS`, and creates
 a draft release. Publishing the draft and creating the moving `v1` tag remain
 separate owner-approved actions.
 
+For 1.0.1-rc.1, the Linux build uses the matching checksum-pinned Static Linux SDK, targets x86_64 musl, rejects ELF interpreter/dynamic dependencies and tests the exact archive plus Action on Swift-free Ubuntu 22.04 and 24.04 before upload. Release-ref validation accepts exact `major.minor.patch` and `major.minor.patch-rc.N` tags. The Action's candidate default needs corresponding published assets; local transport tests do not prove a hosted download.
+
 For version 1.0.0, the protected workflow completed successfully on 2026-07-16.
 The owner subsequently published the release, and the moving `v1` tag points to
 the same release commit as exact tag `1.0.0`.
@@ -57,3 +59,5 @@ Scripts/release/verify-signing-readiness.sh
 It requires both Developer ID certificate types for Team `4NGTWD262W` and an
 available `notarytool`. Missing identities block signing and notarization, but
 do not invalidate unsigned local engineering verification.
+
+This readiness check does not verify notarization credentials, installer installation or Gatekeeper acceptance. Record these separately. Keep the public tap's existing 1.0.0 formula until a reviewed candidate source archive has been published; source checksum validation is not a tap-install pass. See [the candidate checklist](ReleaseCandidate.md).

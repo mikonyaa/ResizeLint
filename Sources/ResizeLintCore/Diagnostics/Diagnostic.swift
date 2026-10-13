@@ -33,12 +33,19 @@ public struct SourceRange: Codable, Equatable, Sendable {
     public let end: SourceLocation
     public let utf8Offset: Int
     public let utf8Length: Int
+    var utf16Start: SourceLocation?
+    var utf16End: SourceLocation?
 
-    public init(start: SourceLocation, end: SourceLocation, utf8Offset: Int, utf8Length: Int) {
+    enum CodingKeys: String, CodingKey { case start, end, utf8Offset, utf8Length }
+
+    public init(start: SourceLocation, end: SourceLocation, utf8Offset: Int, utf8Length: Int,
+                utf16Start: SourceLocation? = nil, utf16End: SourceLocation? = nil) {
         self.start = start
         self.end = end
         self.utf8Offset = utf8Offset
         self.utf8Length = utf8Length
+        self.utf16Start = utf16Start
+        self.utf16End = utf16End
     }
 }
 
@@ -74,6 +81,13 @@ public struct Diagnostic: Codable, Equatable, Comparable, Sendable {
     public let fingerprint: String
     public let isSuppressed: Bool
     public let baselineState: BaselineState
+    // Migration metadata is excluded from the JSON v1 diagnostic contract.
+    var legacyFingerprint: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ruleID, ruleName, severity, message, path, range, helpURI, fix
+        case fingerprint, isSuppressed, baselineState
+    }
 
     public init(
         ruleID: String,
@@ -86,7 +100,8 @@ public struct Diagnostic: Codable, Equatable, Comparable, Sendable {
         fix: SourceEdit? = nil,
         fingerprint: String,
         isSuppressed: Bool = false,
-        baselineState: BaselineState = .absent
+        baselineState: BaselineState = .absent,
+        legacyFingerprint: String? = nil
     ) {
         self.ruleID = ruleID
         self.ruleName = ruleName
@@ -99,6 +114,7 @@ public struct Diagnostic: Codable, Equatable, Comparable, Sendable {
         self.fingerprint = fingerprint
         self.isSuppressed = isSuppressed
         self.baselineState = baselineState
+        self.legacyFingerprint = legacyFingerprint
     }
 
     public static func < (lhs: Diagnostic, rhs: Diagnostic) -> Bool {
@@ -127,6 +143,7 @@ public struct OperationalNotice: Codable, Equatable, Sendable {
         case syntaxError
         case unreadableFile
         case ambiguousProject
+        case baselineMigration
     }
 
     public let kind: Kind

@@ -4,7 +4,7 @@ set -euo pipefail
 
 input=${1:-}
 destination=${2:-}
-version=${3:-1.0.0}
+version=${3:-1.0.1-rc.1}
 mode=${4:-unsigned}
 
 if [[ -z "$input" || -z "$destination" ]]; then

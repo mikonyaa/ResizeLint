@@ -76,12 +76,20 @@ def main() -> int:
     root = Path(__file__).resolve().parents[2]
     report_schema = load(root / "Schemas/resizelint-report-v1.schema.json")
     baseline_schema = load(root / "Schemas/resizelint-baseline-v1.schema.json")
+    baseline_v2_schema = load(root / "Schemas/resizelint-baseline-v2.schema.json")
+    baseline_v2 = load(root / "Tests/Golden/baseline-v2.json")
     report = load(root / "Tests/Golden/report.json")
     baseline = load(root / "Tests/Golden/baseline.json")
     sarif = load(root / "Tests/Golden/report.sarif")
 
     validate(report_schema, report, report_schema)
     validate(baseline_schema, baseline, baseline_schema)
+    validate(baseline_v2_schema, baseline_v2, baseline_v2_schema)
+    import jsonschema
+    sarif_schema = load(root / "Schemas/sarif-2.1.0.schema.json")
+    jsonschema.Draft7Validator(sarif_schema).validate(sarif)
+    if sarif["runs"][0].get("columnKind") != "utf16CodeUnits":
+        raise ValueError("SARIF must explicitly measure UTF-16 code units")
 
     if sarif.get("version") != "2.1.0" or not sarif.get("runs"):
         raise ValueError("SARIF golden file does not declare a 2.1.0 run")

@@ -4,7 +4,7 @@ set -euo pipefail
 
 repository_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
 destination=${1:-}
-version=${2:-1.0.0}
+version=${2:-1.0.1-rc.1}
 
 if [[ -z "$destination" ]]; then
   echo "Usage: $0 <destination-directory> [version]" >&2

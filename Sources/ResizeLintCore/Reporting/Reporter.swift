@@ -100,12 +100,12 @@ public enum Reporter {
                     artifactLocation: SARIFArtifactLocation(uri: sarifURI(diagnostic.path)),
                     region: SARIFRegion(
                         startLine: diagnostic.range.start.line,
-                        startColumn: diagnostic.range.start.column,
+                        startColumn: diagnostic.range.utf16Start?.column ?? diagnostic.range.start.column,
                         endLine: diagnostic.range.end.line,
-                        endColumn: diagnostic.range.end.column
+                        endColumn: diagnostic.range.utf16End?.column ?? diagnostic.range.end.column
                     )
                 ))],
-                partialFingerprints: ["resizelint/v1": diagnostic.fingerprint],
+                partialFingerprints: ["resizelint/v2": diagnostic.fingerprint],
                 baselineState: diagnostic.baselineState == .unchanged ? "unchanged" : "new"
             )
         }
@@ -119,7 +119,8 @@ public enum Reporter {
                     informationUri: "https://github.com/mikonyaa/ResizeLint",
                     rules: rules
                 )),
-                results: results
+                results: results,
+                columnKind: "utf16CodeUnits"
             )]
         )
         return try encode(report)
@@ -211,7 +212,7 @@ private struct SARIFReport: Encodable {
     let runs: [SARIFRun]
     enum CodingKeys: String, CodingKey { case schema = "$schema"; case version, runs }
 }
-private struct SARIFRun: Encodable { let tool: SARIFTool; let results: [SARIFResult] }
+private struct SARIFRun: Encodable { let tool: SARIFTool; let results: [SARIFResult]; let columnKind: String }
 private struct SARIFTool: Encodable { let driver: SARIFDriver }
 private struct SARIFDriver: Encodable {
     let name: String

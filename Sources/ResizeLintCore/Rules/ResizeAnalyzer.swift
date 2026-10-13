@@ -151,12 +151,16 @@ public struct ResizeAnalyzer: Sendable {
             matches.append(RuleMatch(ruleID: "RL007", range: range))
         }
 
+        let syntax = matches.isEmpty ? nil : SyntaxContext(tree: tree)
+        let coordinates = matches.isEmpty ? nil : SourceCoordinates(source: file.contents)
         let diagnostics = matches.compactMap { match in
             makeDiagnostic(
                 match,
                 file: file,
                 configuration: configuration,
-                suppressions: suppressions
+                suppressions: suppressions,
+                syntax: parseDiagnostics.isEmpty ? syntax : nil,
+                coordinates: coordinates
             )
         }
         return FileAnalysis(diagnostics: diagnostics, notices: notices)
@@ -272,27 +276,35 @@ public struct ResizeAnalyzer: Sendable {
         _ match: RuleMatch,
         file: SourceInput,
         configuration: ResizeLintConfiguration,
-        suppressions: SuppressionIndex?
+        suppressions: SuppressionIndex?,
+        syntax: SyntaxContext? = nil,
+        coordinates: SourceCoordinates? = nil
     ) -> Diagnostic? {
         guard configuration.isRuleEnabled(match.ruleID, path: file.path),
               let stringRange = Range(match.range, in: file.contents) else { return nil }
         let metadata = RuleCatalog.metadata(for: match.ruleID)
         let startOffset = file.contents.utf8.distance(from: file.contents.startIndex, to: stringRange.lowerBound)
         let endOffset = file.contents.utf8.distance(from: file.contents.startIndex, to: stringRange.upperBound)
-        let start = location(in: file.contents, at: stringRange.lowerBound)
-        let end = location(in: file.contents, at: stringRange.upperBound)
+        let sourceRange = (coordinates ?? SourceCoordinates(source: file.contents))
+            .range(offset: startOffset, length: endOffset - startOffset)
         let matchedSource = String(file.contents[stringRange])
-        let fingerprint = Fingerprinter.fingerprint(
+        let legacyFingerprint = Fingerprinter.fingerprint(
             ruleID: match.ruleID,
             path: file.path,
             syntaxKind: file.kind == .swift ? "memberAccess" : "projectSetting",
             surroundingTokens: matchedSource.components(separatedBy: .whitespacesAndNewlines)
         )
+        let fingerprint = Fingerprinter.declarationFingerprint(
+            ruleID: match.ruleID, path: file.path,
+            syntaxKind: file.kind == .swift ? "memberAccess" : "projectSetting",
+            surroundingTokens: matchedSource.components(separatedBy: .whitespacesAndNewlines),
+            declarationTokens: syntax?.declarationTokens(at: startOffset) ?? []
+        )
         let fix = safeFix(
             ruleID: match.ruleID,
             matchedSource: matchedSource,
             file: file,
-            range: stringRange,
+            syntax: syntax,
             utf8Offset: startOffset,
             utf8Length: endOffset - startOffset
         )
@@ -302,16 +314,12 @@ public struct ResizeAnalyzer: Sendable {
             severity: configuration.severity(for: match.ruleID, default: metadata.severity, path: file.path),
             message: metadata.message,
             path: file.path,
-            range: SourceRange(
-                start: start,
-                end: end,
-                utf8Offset: startOffset,
-                utf8Length: endOffset - startOffset
-            ),
+            range: sourceRange,
             helpURI: metadata.helpURI,
             fix: fix,
             fingerprint: fingerprint,
-            isSuppressed: suppressions?.suppresses(ruleID: match.ruleID, line: start.line) ?? false
+            isSuppressed: suppressions?.suppresses(ruleID: match.ruleID, line: sourceRange.start.line) ?? false,
+            legacyFingerprint: legacyFingerprint
         )
     }
 
@@ -319,34 +327,18 @@ public struct ResizeAnalyzer: Sendable {
         ruleID: String,
         matchedSource: String,
         file: SourceInput,
-        range: Range<String.Index>,
+        syntax: SyntaxContext?,
         utf8Offset: Int,
         utf8Length: Int
     ) -> SourceEdit? {
         guard ruleID == "RL002", matchedSource == "UIScreen.main.scale",
-              hasTraitCollectionContext(source: file.contents, before: range.lowerBound) else { return nil }
+              syntax?.permitsTraitCollectionFix(at: utf8Offset) == true else { return nil }
         return SourceEdit(
             path: file.path,
             utf8Offset: utf8Offset,
             utf8Length: utf8Length,
-            replacement: "traitCollection.displayScale"
+            replacement: "self.traitCollection.displayScale"
         )
-    }
-
-    private static func hasTraitCollectionContext(source: String, before index: String.Index) -> Bool {
-        let prefix = String(source[..<index])
-        let pattern = #"\bclass\s+\w+[^\{\n]*:\s*(?:UIView|UIViewController|UITableViewCell|UICollectionViewCell|UIControl)\b[^\{]*\{"#
-        guard let expression = try? NSRegularExpression(pattern: pattern),
-              let declaration = expression.matches(in: prefix, range: NSRange(prefix.startIndex..., in: prefix)).last,
-              let declarationRange = Range(declaration.range, in: prefix) else { return false }
-        let bodyPrefix = prefix[declarationRange.lowerBound...]
-        let depth = bodyPrefix.reduce(into: 0) { depth, character in
-            if character == "{" { depth += 1 }
-            if character == "}" { depth -= 1 }
-        }
-        guard depth > 0 else { return false }
-        let currentLine = prefix.split(separator: "\n", omittingEmptySubsequences: false).last.map(String.init) ?? ""
-        return currentLine.range(of: #"\b(?:static|class)\s+(?:let|var|func)\b"#, options: .regularExpression) == nil
     }
 
     private static func location(in source: String, at index: String.Index) -> SourceLocation {

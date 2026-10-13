@@ -7,6 +7,7 @@ enum CLIOperation: Sendable {
     case baselineCreate(force: Bool)
     case baselineUpdate
     case baselineCheck
+    case baselineMigrate
     case rules
     case initialize(force: Bool)
     case version
@@ -41,19 +42,6 @@ private enum CLIUserError: Error, CustomStringConvertible {
 }
 
 enum CLIApplication {
-    static func run(arguments: [String], currentDirectory: URL) async -> CLIResult {
-        do {
-            let invocation = try parse(arguments)
-            return await run(invocation: invocation, currentDirectory: currentDirectory)
-        } catch {
-            return CLIResult(
-                exitCode: 2,
-                standardOutput: "",
-                standardError: TerminalEscaping.escape("\(error)") + "\n"
-            )
-        }
-    }
-
     static func run(invocation: CLIInvocation, currentDirectory: URL) async -> CLIResult {
         do {
             switch invocation.operation {
@@ -66,7 +54,7 @@ enum CLIApplication {
                 return CLIResult(exitCode: 0, standardOutput: output, standardError: "")
             case let .initialize(force):
                 return try initialize(force: force, root: currentDirectory)
-            case .lint, .fix, .baselineCreate, .baselineUpdate, .baselineCheck:
+            case .lint, .fix, .baselineCreate, .baselineUpdate, .baselineCheck, .baselineMigrate:
                 return try await runProject(invocation, currentDirectory: currentDirectory)
             }
         } catch let error as ConfigurationError {
@@ -93,6 +81,12 @@ enum CLIApplication {
         let urls = pathStrings.map { resolve($0, relativeTo: currentDirectory) }
         let start = ContinuousClock.now
         var result = try await ProjectScanner.scan(paths: urls, root: root, configuration: configuration)
+        if result.notices.contains(where: { $0.kind == .unreadableFile }) {
+            switch invocation.operation {
+            case .lint: break
+            default: throw ScanError.incompleteScan
+            }
+        }
         let elapsed = start.duration(to: .now)
         let duration = Double(elapsed.components.seconds)
             + Double(elapsed.components.attoseconds) / 1_000_000_000_000_000_000
@@ -116,14 +110,21 @@ enum CLIApplication {
             )
         case .baselineCheck:
             let url = try baselineURL(invocation, configuration: configuration, root: root)
-            let document = try BaselineStore.load(from: url)
-            let issues = BaselineStore.check(document, current: BaselineStore.entries(from: result.diagnostics))
+            let document = try requireBaseline(at: url)
+            let issues = BaselineStore.check(document, diagnostics: result.diagnostics)
             let output = issues.isEmpty
                 ? "Baseline is current.\n"
                 : issues.map {
                     "\($0.kind.rawValue): \(TerminalEscaping.escape($0.entry.ruleID)) \(TerminalEscaping.escape($0.entry.path))"
                 }.joined(separator: "\n") + "\n"
             return CLIResult(exitCode: issues.isEmpty ? 0 : 1, standardOutput: output, standardError: notices(result, verbose: invocation.verbose))
+        case .baselineMigrate:
+            let url = try baselineURL(invocation, configuration: configuration, root: root)
+            let document = try requireBaseline(at: url)
+            let migrated = try BaselineStore.migrate(document, current: result.diagnostics)
+            try BaselineStore.update(findings: migrated.findings, at: url)
+            return CLIResult(exitCode: 0, standardOutput: "Migrated baseline to schema 2; accepted occurrences preserved.\n",
+                             standardError: notices(result, verbose: invocation.verbose))
         case let .fix(dryRun):
             return try await fix(
                 result: result,
@@ -223,7 +224,8 @@ enum CLIApplication {
         }
         let threshold = invocation.strict ? Severity.warning : (invocation.failOn ?? configuration.failOn)
         return CLIResult(
-            exitCode: result.reachesFailureThreshold(threshold) ? 1 : 0,
+            exitCode: result.notices.contains(where: { $0.kind == .unreadableFile }) ? 3
+                : (result.reachesFailureThreshold(threshold) ? 1 : 0),
             standardOutput: standardOutput,
             standardError: notices(result, verbose: invocation.verbose)
         )
@@ -238,6 +240,9 @@ enum CLIApplication {
         let cli = ConfigurationOverrides(failOn: invocation.failOn, strict: invocation.strict, jobs: invocation.jobs)
         if let explicit = invocation.config {
             let url = try resolveInsideRoot(explicit, relativeTo: currentDirectory, root: root)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                throw CLIUserError.message("Configuration not found: \(relative(url, root: root))")
+            }
             return ResizeLintConfiguration.resolve(
                 repository: try ConfigurationLoader.load(at: url),
                 nearest: nil,
@@ -258,9 +263,20 @@ enum CLIApplication {
         root: URL
     ) throws -> BaselineDocument? {
         let url = try baselineURL(invocation, configuration: configuration, root: root)
-        if FileManager.default.fileExists(atPath: url.path) { return try BaselineStore.load(from: url) }
+        if FileManager.default.fileExists(atPath: url.path) {
+            let document = try BaselineStore.load(from: url)
+            try BaselineStore.validateForMatching(document)
+            return document
+        }
         if invocation.baseline != nil { throw CLIUserError.message("Baseline not found: \(relative(url, root: root))") }
         return nil
+    }
+
+    private static func requireBaseline(at url: URL) throws -> BaselineDocument {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw CLIUserError.message("Baseline not found: \(url.lastPathComponent)")
+        }
+        return try BaselineStore.load(from: url)
     }
 
     private static func baselineURL(
@@ -302,7 +318,9 @@ enum CLIApplication {
     }
 
     private static func notices(_ result: AnalysisResult, verbose: Bool) -> String {
-        let visible = result.notices.filter { verbose || $0.kind == .malformedSuppression || $0.kind == .unreadableFile }
+        let visible = result.notices.filter {
+            verbose || $0.kind == .malformedSuppression || $0.kind == .unreadableFile || $0.kind == .baselineMigration
+        }
         return visible.map {
             "\(TerminalEscaping.escape($0.path)): \(TerminalEscaping.escape($0.message))"
         }.joined(separator: "\n") + (visible.isEmpty ? "" : "\n")
@@ -405,68 +423,4 @@ enum CLIApplication {
             : url.lastPathComponent
     }
 
-    private static func parse(_ rawArguments: [String]) throws -> CLIInvocation {
-        var arguments = rawArguments
-        var operation: CLIOperation = .lint
-        if let first = arguments.first, !first.hasPrefix("-") {
-            switch first {
-            case "lint": operation = .lint; arguments.removeFirst()
-            case "fix": operation = .fix(dryRun: false); arguments.removeFirst()
-            case "rules": operation = .rules; arguments.removeFirst()
-            case "init": operation = .initialize(force: false); arguments.removeFirst()
-            case "version": operation = .version; arguments.removeFirst()
-            case "baseline":
-                arguments.removeFirst()
-                guard let action = arguments.first else { throw CLIUserError.message("Missing baseline action") }
-                arguments.removeFirst()
-                switch action {
-                case "create": operation = .baselineCreate(force: false)
-                case "update": operation = .baselineUpdate
-                case "check": operation = .baselineCheck
-                default: throw CLIUserError.message("Unknown baseline action: \(action)")
-                }
-            default:
-                operation = .lint
-            }
-        }
-
-        var invocation = CLIInvocation(operation: operation)
-        var index = 0
-        while index < arguments.count {
-            let argument = arguments[index]
-            func value() throws -> String {
-                guard index + 1 < arguments.count else { throw CLIUserError.message("Missing value for \(argument)") }
-                index += 1
-                return arguments[index]
-            }
-            switch argument {
-            case "--config": invocation.config = try value()
-            case "--baseline": invocation.baseline = try value()
-            case "--format": invocation.format = ReportFormat(rawValue: try value())
-            case "--output": invocation.output = try value()
-            case "--fail-on": invocation.failOn = Severity(rawValue: try value())
-            case "--jobs":
-                guard let jobs = Int(try value()), jobs > 0 else { throw CLIUserError.message("--jobs must be positive") }
-                invocation.jobs = jobs
-            case "--strict": invocation.strict = true
-            case "--no-color": invocation.noColor = true
-            case "--quiet": invocation.quiet = true
-            case "--verbose": invocation.verbose = true
-            case "--dry-run": invocation.operation = .fix(dryRun: true)
-            case "--force":
-                switch invocation.operation {
-                case .baselineCreate: invocation.operation = .baselineCreate(force: true)
-                case .initialize: invocation.operation = .initialize(force: true)
-                default: throw CLIUserError.message("--force is not valid for this command")
-                }
-            default:
-                if argument.hasPrefix("-") { throw CLIUserError.message("Unknown option: \(argument)") }
-                invocation.paths.append(argument)
-            }
-            index += 1
-        }
-        if invocation.format == nil { throw CLIUserError.message("Invalid report format") }
-        if rawArguments.contains("--fail-on"), invocation.failOn == nil { throw CLIUserError.message("Invalid failure threshold") }
-        return invocation
-    }
 }

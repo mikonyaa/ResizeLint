@@ -82,6 +82,20 @@ func oversizedBaselineIsRejectedBeforeRead() throws {
     }
 }
 
+@Test("Baseline v2 requires an explicit occurrence count while v1 remains readable")
+func baselineCountIsRequiredOnlyForV2() throws {
+    let url = temporaryFile(named: "count.json")
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    let entry = #"{"ruleID":"RL001","path":"Canvas.swift","fingerprint":"sha256:example"}"#
+    let legacy = "{\"schemaVersion\":1,\"toolVersion\":\"1.0.0\",\"findings\":[\(entry)]}"
+    try Data(legacy.utf8).write(to: url)
+    #expect(try BaselineStore.load(from: url).findings.first?.occurrences == 1)
+    let current = "{\"schemaVersion\":2,\"fingerprintVersion\":2,\"toolVersion\":\"1.0.1-rc.1\",\"findings\":[\(entry)]}"
+    try Data(current.utf8).write(to: url)
+    #expect(throws: BaselineError.invalidDocument) { try BaselineStore.load(from: url) }
+}
+
 @Test("Baseline writes refuse symbolic-link destinations")
 func baselineWriteRejectsSymlink() throws {
     let root = FileManager.default.temporaryDirectory.appending(path: "resizelint-baseline-symlink-\(UUID().uuidString)")
@@ -107,4 +121,64 @@ private func temporaryFile(named name: String) -> URL {
     FileManager.default.temporaryDirectory
         .appending(path: "resizelint-baseline-\(UUID().uuidString)")
         .appending(path: name)
+}
+
+@Test("A baseline never hides an identical expression added to another declaration")
+func baselineDetectsAddedDeclarationAndLineMovement() async throws {
+    let source = "func first() { let width = UIScreen.main.bounds.width }"
+    let first = await baselineAnalysis(source)
+    let document = BaselineDocument(findings: BaselineStore.entries(from: first.diagnostics))
+    let moved = await baselineAnalysis("// shifted\n\n" + source)
+    #expect(!moved.applying(baseline: document).reachesFailureThreshold(.error))
+    let added = await baselineAnalysis(source + "\nfunc second() { let width = UIScreen.main.bounds.width }")
+    let marked = added.applying(baseline: document)
+    #expect(marked.diagnostics.count { $0.baselineState == .unchanged } == 1)
+    #expect(marked.diagnostics.count { $0.baselineState == .new } == 1)
+    #expect(marked.reachesFailureThreshold(.error))
+    #expect(BaselineStore.check(document, diagnostics: added.diagnostics).contains { $0.kind == .new })
+}
+
+@Test("Truly identical occurrences use a budget and update/check round trip is valid")
+func baselineCountsOccurrences() async throws {
+    let one = await baselineAnalysis("func render() { _ = UIScreen.main.bounds }")
+    let two = await baselineAnalysis("func render() { _ = UIScreen.main.bounds; _ = UIScreen.main.bounds }")
+    let document = BaselineDocument(findings: BaselineStore.entries(from: one.diagnostics))
+    #expect(two.applying(baseline: document).diagnostics.count { $0.baselineState == .new } == 1)
+    let url = temporaryFile(named: "occurrences.json")
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+    try BaselineStore.update(findings: BaselineStore.entries(from: two.diagnostics), at: url)
+    let written = try BaselineStore.load(from: url)
+    #expect(written.schemaVersion == 2)
+    #expect(written.findings.count == 1)
+    #expect(written.findings.first?.occurrences == 2)
+    #expect(BaselineStore.check(written, diagnostics: two.diagnostics).isEmpty)
+    #expect(BaselineStore.check(written, diagnostics: one.diagnostics).contains { $0.kind == .stale })
+}
+
+@Test("Legacy migration preserves only unique accepted findings and refuses ambiguity")
+func legacyMigrationIsConservative() async throws {
+    let first = await baselineAnalysis("func first() { _ = UIScreen.main.bounds }")
+    let old = BaselineDocument(schemaVersion: 1, findings: first.diagnostics.map(BaselineStore.legacyEntry))
+    let migrated = try BaselineStore.migrate(old, current: first.diagnostics)
+    #expect(migrated.schemaVersion == 2)
+    #expect(!first.applying(baseline: migrated).reachesFailureThreshold(.error))
+    let added = await baselineAnalysis("func first() { _ = UIScreen.main.bounds }; func second() { _ = UIScreen.main.bounds }")
+    #expect(added.applying(baseline: old).diagnostics.allSatisfy { $0.baselineState == .new })
+    #expect(throws: BaselineError.self) { try BaselineStore.migrate(old, current: added.diagnostics) }
+    #expect(throws: BaselineError.self) { try BaselineStore.migrate(old, current: []) }
+}
+
+@Test("The writer aggregates repeated identities rather than writing invalid duplicates")
+func baselineWriterAggregatesDuplicates() throws {
+    let url = temporaryFile(named: "duplicates.json")
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+    let entry = BaselineEntry(ruleID: "RL001", path: "View.swift", fingerprint: "sha256:fixture")
+    try BaselineStore.create(findings: [entry, entry], at: url, force: false)
+    let written = try BaselineStore.load(from: url)
+    #expect(written.findings.first?.occurrences == 2)
+    #expect(BaselineStore.check(written, current: written.findings).isEmpty)
+}
+
+private func baselineAnalysis(_ source: String) async -> AnalysisResult {
+    await ResizeAnalyzer().analyze(AnalysisRequest(files: [SourceInput(path: "View.swift", contents: source)]))
 }

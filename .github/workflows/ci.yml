@@ -72,6 +72,15 @@ jobs:
           RESIZELINT_VERIFY_FORMULA_CHECKSUM: ${{ matrix.runner == 'macos-26' && '1' || '0' }}
         run: Scripts/release/test-source-archive.sh
 
+      - name: Install machine verification dependency
+        run: |
+          python3 -m venv "$RUNNER_TEMP/resizelint-verification"
+          "$RUNNER_TEMP/resizelint-verification/bin/python" -m pip install -r Scripts/ci/requirements.txt
+          echo "$RUNNER_TEMP/resizelint-verification/bin" >> "$GITHUB_PATH"
+
+      - name: Test release candidate on production executable
+        run: python3 Scripts/ci/test-release-candidate.py .build/release/resizelint
+
       - name: Validate machine contracts
         run: Scripts/ci/validate-machine-contracts.py
 
@@ -80,6 +89,9 @@ jobs:
 
       - name: Check publication hygiene
         run: Scripts/ci/public-artifact-scan.sh
+
+      - name: Test publication hygiene policy
+        run: Scripts/ci/test-public-artifact-scan.sh
 
       - name: Run benchmark smoke test
         if: matrix.runner == 'macos-26' && github.event_name != 'pull_request'

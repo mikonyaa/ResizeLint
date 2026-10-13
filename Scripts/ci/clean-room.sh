@@ -15,8 +15,8 @@ if [[ -e "$clone/.build" ]]; then
 fi
 
 cd "$clone"
-swift package resolve
-swift build
-swift test
+swift package --cache-path "$temporary_root/cache" resolve
+swift build --cache-path "$temporary_root/cache" --jobs 4
+swift test --cache-path "$temporary_root/cache" --jobs 4
 
 echo "Clean-room resolve, build, and test passed."

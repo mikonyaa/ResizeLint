@@ -31,13 +31,24 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
           test "$GITHUB_REF" = "refs/tags/$VERSION"
 
       - name: Build Linux x86_64 archive
         env:
           VERSION: ${{ inputs.version }}
         run: Scripts/release/build-linux.sh "$RUNNER_TEMP/linux" "$VERSION"
+
+      - name: Install archive verification dependency
+        run: |
+          python3 -m venv "$RUNNER_TEMP/resizelint-verification"
+          "$RUNNER_TEMP/resizelint-verification/bin/python" -m pip install -r Scripts/ci/requirements.txt
+          echo "$RUNNER_TEMP/resizelint-verification/bin" >> "$GITHUB_PATH"
+
+      - name: Test exact archive in Swift-free consumers
+        env:
+          VERSION: ${{ inputs.version }}
+        run: Scripts/ci/test-linux-release-consumer.sh "$RUNNER_TEMP/linux/ResizeLint-$VERSION-linux-x86_64.tar.gz" "$VERSION"
 
       - name: Upload Linux archive
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -71,7 +82,7 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
           test "$GITHUB_REF" = "refs/tags/$VERSION"
 
       - name: Import Developer ID identities

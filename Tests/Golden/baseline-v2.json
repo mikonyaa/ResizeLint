@@ -1,0 +1,13 @@
+{
+  "findings": [
+    {
+      "fingerprint": "sha256:fixture",
+      "occurrences": 2,
+      "path": "Sources/View.swift",
+      "ruleID": "RL002"
+    }
+  ],
+  "fingerprintVersion": 2,
+  "schemaVersion": 2,
+  "toolVersion": "1.0.1-rc.1"
+}

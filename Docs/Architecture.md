@@ -30,6 +30,10 @@ Rules combine lexical masking, Swift syntax, enclosing declaration context, and 
 
 The fix engine accepts only nonoverlapping edits with proven context. It applies edits from the end of a file, reparses the complete result, preserves permissions and line endings, writes through atomic replacement, and reruns analysis. A failed file never receives a partial edit.
 
+RL002 context uses SwiftSyntax ancestry with a conservative direct-instance-body boundary. Reparsing does not establish type correctness; independent consumer checks compile before/after fixtures. Token and line-offset indexes keep declaration fingerprinting and SARIF coordinate conversion from repeatedly walking source prefixes.
+
 ## Public contracts
 
 The CLI, configuration, RL001–RL009 semantics, report schema, SARIF behavior, baseline schema, and Action inputs/outputs are compatibility surfaces for 1.x. Internal Swift types are free to evolve without source compatibility.
+
+Production and tests share ArgumentParser validation. Baseline v2 records declaration-aware identities and occurrence budgets with explicit v1 migration. JSON remains schema 1 with byte coordinates; SARIF declares UTF-16 coordinates and a versioned partial fingerprint. Unreadable files prevent a successful complete scan.

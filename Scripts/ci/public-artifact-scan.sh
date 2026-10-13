@@ -5,30 +5,16 @@ set -euo pipefail
 repository_root=$(git rev-parse --show-toplevel)
 cd "$repository_root"
 
-forbidden_terms=(
-  "co""dex"
-  "open""ai"
-  "chat""gpt"
-  "clau""de"
-  "co""pilot"
-  "pro""mpt"
-  "agent"" plan"
-  "AI""-generated"
-  ".co""dex"
-  "AGENTS"".md"
-  "pasted""-text"
-)
-
+# Public documentation may mention tools, prompts, or AGENTS.md.
+# Private state, build output, signing material and credential content remain prohibited.
 forbidden_paths=(
-  ".co""dex"
-  "AGENTS"".md"
-  "pasted""-text"
-  "implementation""-plan"
+  ".co""dex/"
+  ".security/"
   ".p12"
   ".p8"
   ".mobileprovision"
   "provisioning""profile"
-  "derived""data"
+  "derived""data/"
 )
 
 sensitive_markers=(
@@ -55,12 +41,6 @@ for file in "${files[@]}"; do
   done
 
   [[ -f "$file" ]] || continue
-  for term in "${forbidden_terms[@]}"; do
-    if LC_ALL=C grep -I -i -F -q -- "$term" "$file"; then
-      echo "Rejected internal marker in: $file" >&2
-      failed=1
-    fi
-  done
   for marker in "${sensitive_markers[@]}"; do
     if LC_ALL=C grep -I -F -q -- "$marker" "$file"; then
       echo "Rejected sensitive marker in: $file" >&2
