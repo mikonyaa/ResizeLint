@@ -26,7 +26,7 @@ jobs:
           - macos-26
           - ubuntu-22.04
           - macos-26-intel
-          - ubuntu-latest
+          - ubuntu-24.04
 
     steps:
       - name: Check out source
@@ -44,6 +44,15 @@ jobs:
             --output "$RUNNER_TEMP/swift-signing-keys.asc"
           gpg --homedir "$keyring" --batch --import "$RUNNER_TEMP/swift-signing-keys.asc"
           echo "GNUPGHOME=$keyring" >> "$GITHUB_ENV"
+
+      - name: Install Swift system dependencies on Ubuntu 22.04
+        if: matrix.runner == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            binutils git unzip gnupg2 libc6-dev libcurl4-openssl-dev libedit2 \
+            libgcc-11-dev libpython3-dev libsqlite3-0 libstdc++-11-dev \
+            libxml2-dev libz3-dev pkg-config python3-lldb-13 tzdata zlib1g-dev
 
       - name: Install Swift 6.3.3
         uses: swift-actions/setup-swift@d8e84bc3a450686a95474d7d6fa4a3301498debc
